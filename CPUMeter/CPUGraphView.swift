@@ -8,35 +8,27 @@ struct CPUGraphView: View {
             let width = size.width
             let height = size.height
             
-            // Draw background
-            let backgroundPath = Path(roundedRect: CGRect(x: 0, y: 0, width: width, height: height), cornerRadius: 2)
-            context.fill(backgroundPath, with: .color(.black.opacity(0.9)))
+            // Draw background (transparent for menu bar blending)
+            // No background - let system theme show through
             
-            // Draw CPU graph
-            if cpuMonitor.cpuHistory.count > 1 {
-                var path = Path()
-                let xStep = width / Double(cpuMonitor.cpuHistory.count - 1)
+            // Draw vertical pixel lines for each data point
+            if cpuMonitor.cpuHistory.count > 0 {
+                let lineWidth = max(1.0, width / Double(cpuMonitor.cpuHistory.count))
                 
                 for (index, cpuValue) in cpuMonitor.cpuHistory.enumerated() {
-                    let x = Double(index) * xStep
-                    let y = height * (1.0 - cpuValue / 100.0)
+                    let xStart = Double(index) * lineWidth
+                    let lineHeight = (cpuValue / 100.0) * height
                     
-                    if index == 0 {
-                        path.move(to: CGPoint(x: x, y: y))
-                    } else {
-                        path.addLine(to: CGPoint(x: x, y: y))
-                    }
+                    // Draw vertical line from bottom
+                    var path = Path()
+                    path.move(to: CGPoint(x: xStart + lineWidth / 2, y: height))
+                    path.addLine(to: CGPoint(x: xStart + lineWidth / 2, y: height - lineHeight))
+                    
+                    context.stroke(path, with: .color(.white), lineWidth: max(1.0, lineWidth - 1))
                 }
-                
-                // Draw line
-                context.stroke(path, with: .color(Color(red: 0.0, green: 1.0, blue: 1.0)), lineWidth: 1.0)
             }
-            
-            // Draw border
-            let borderPath = Path(roundedRect: CGRect(x: 0, y: 0, width: width, height: height), cornerRadius: 2)
-            context.stroke(borderPath, with: .color(.white.opacity(0.15)), lineWidth: 0.5)
         }
-        .frame(width: 120, height: 24)
+        .frame(width: 35, height: 22)
     }
 }
 

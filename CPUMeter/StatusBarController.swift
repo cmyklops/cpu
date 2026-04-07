@@ -14,14 +14,14 @@ class StatusBarController: NSObject {
     
     private func setupMenuBar() {
         // Create status bar item with custom view
-        statusItem = NSStatusBar.system.statusItem(withLength: 120)
+        statusItem = NSStatusBar.system.statusItem(withLength: 35)
         
         // Create SwiftUI graph view
         let contentView = ContentView()
         graphView = NSHostingView(rootView: contentView)
         
         guard let hostingView = graphView else { return }
-        hostingView.frame = NSRect(x: 0, y: 0, width: 120, height: 24)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 35, height: 22)
         
         statusItem?.button?.addSubview(hostingView)
     }

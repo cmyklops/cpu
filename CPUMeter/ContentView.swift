@@ -5,7 +5,7 @@ struct ContentView: View {
     
     var body: some View {
         CPUGraphView(cpuMonitor: cpuMonitor)
-            .frame(width: 120, height: 24)
+            .frame(width: 35, height: 22)
     }
 }
 
