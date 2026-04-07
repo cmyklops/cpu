@@ -1,0 +1,27 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Xcode
+build/
+DerivedData/
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.xcworkspace/
+xcuserdata/
+*.xcarchive
+*.ipa
+
+# Swift
+.build/
+*.swift.swiftdeps
+
+# IDE
+.vscode/
+.idea/
+
+# Distribution
+dist/
+*.app/
