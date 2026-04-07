@@ -98,8 +98,7 @@ struct SettingsView: View {
                 .font(.caption)
                 Spacer()
             }
-            
-            Spacer()
+            .padding(.bottom, 8)
             
             // Quit button
             Button(action: {

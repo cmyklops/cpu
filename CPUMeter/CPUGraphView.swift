@@ -32,7 +32,7 @@ struct CPUGraphView: View {
                     
                     let barPositionFromRight = history.count - 1 - index
                     let isHighlighted = cpuMonitor.highlightedBarPositions.contains(barPositionFromRight)
-                    let barColor: Color = isHighlighted ? Color(red: 220/255, green: 195/255, blue: 6/255) : colorForValue(value)
+                    let barColor: Color = isHighlighted ? Color(red: 220/255, green: 195/255, blue: 6/255) : .white
                     
                     var path = Path()
                     path.move(to: CGPoint(x: xStart + lineWidth / 2, y: height))
