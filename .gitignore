@@ -25,3 +25,4 @@ xcuserdata/
 # Distribution
 dist/
 *.app/
+*.dmg
