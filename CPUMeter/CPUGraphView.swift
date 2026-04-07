@@ -19,12 +19,16 @@ struct CPUGraphView: View {
                     let xStart = Double(index) * lineWidth
                     let lineHeight = (cpuValue / 100.0) * height
                     
+                    // Determine color: yellow for latest bar if frequency just changed, white otherwise
+                    let isLatestBar = (index == cpuMonitor.cpuHistory.count - 1)
+                    let barColor: Color = (isLatestBar && cpuMonitor.frequencyJustChanged) ? .yellow : .white
+                    
                     // Draw vertical line from bottom
                     var path = Path()
                     path.move(to: CGPoint(x: xStart + lineWidth / 2, y: height))
                     path.addLine(to: CGPoint(x: xStart + lineWidth / 2, y: height - lineHeight))
                     
-                    context.stroke(path, with: .color(.white), lineWidth: max(1.0, lineWidth - 1))
+                    context.stroke(path, with: .color(barColor), lineWidth: max(1.0, lineWidth - 1))
                 }
             }
         }

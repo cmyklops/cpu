@@ -8,6 +8,7 @@ class CPUMonitor: NSObject, ObservableObject {
     static let shared = CPUMonitor()
     
     @Published var cpuHistory: [Double] = []
+    @Published var frequencyJustChanged: Bool = false
     private var timer: Timer?
     private let maxDataPoints = 12
     private var updateInterval: Double = 1.0
@@ -33,6 +34,13 @@ class CPUMonitor: NSObject, ObservableObject {
     @objc private func updateFrequencyChanged(_ notification: Notification) {
         if let frequency = notification.object as? Double {
             self.updateInterval = frequency
+            DispatchQueue.main.async {
+                self.frequencyJustChanged = true
+                // Reset flag after 1 second
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    self.frequencyJustChanged = false
+                }
+            }
             restartMonitoring()
         }
     }

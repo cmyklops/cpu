@@ -2,24 +2,9 @@ import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject var preferences = PreferencesManager.shared
-    @Environment(\.dismiss) var dismiss
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Header
-            HStack {
-                Text("CPU Meter Settings")
-                    .font(.headline)
-                Spacer()
-                Button("✕") {
-                    dismiss()
-                }
-                .buttonStyle(.plain)
-                .help("Close settings")
-            }
-            
-            Divider()
-            
             // Launch at startup
             Toggle("Launch at startup", isOn: Binding(
                 get: { preferences.launchAtStartup },
