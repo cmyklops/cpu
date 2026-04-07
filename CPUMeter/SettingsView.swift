@@ -9,7 +9,7 @@ struct SettingsView: View {
     private let appVersion = "1.0.0"
     
     var body: some View {
-        VStack(alignment: .center, spacing: 8) {
+        VStack(alignment: .center, spacing: 4) {
             // Data freshness indicator
             if !cpuMonitor.isDataFresh {
                 HStack {
@@ -25,7 +25,7 @@ struct SettingsView: View {
             }
             
             // Metric selection
-            Picker("Metric", selection: Binding(
+            Picker("", selection: Binding(
                 get: { preferences.metricType },
                 set: { preferences.setMetricType($0) }
             )) {
@@ -39,9 +39,6 @@ struct SettingsView: View {
             
             // Display mode selection
             VStack(alignment: .leading, spacing: 3) {
-                Text("Display")
-                    .font(.caption2)
-                    .foregroundColor(.gray)
                 Picker("", selection: Binding(
                     get: { preferences.displayMode },
                     set: { preferences.setDisplayMode($0) }
@@ -59,20 +56,20 @@ struct SettingsView: View {
                 .padding(.vertical, 2)
             
             // Stats display
-            VStack(alignment: .leading, spacing: 2) {
-                HStack {
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(spacing: 8) {
                     Text("Current")
                     Spacer()
                     Text(String(format: "%.1f%%", cpuMonitor.currentValue))
                         .monospacedDigit()
                 }
-                HStack {
+                HStack(spacing: 8) {
                     Text("Average")
                     Spacer()
                     Text(String(format: "%.1f%%", cpuMonitor.averageValue))
                         .monospacedDigit()
                 }
-                HStack {
+                HStack(spacing: 8) {
                     Text("Peak")
                     Spacer()
                     Text(String(format: "%.1f%%", cpuMonitor.peakValue))
@@ -83,18 +80,18 @@ struct SettingsView: View {
             .foregroundColor(.gray)
             
             Divider()
-                .padding(.vertical, 2)
+                .padding(.vertical, 1)
             
             // Update frequency
-            VStack(alignment: .leading, spacing: 3) {
-                HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 8) {
                     Text("Update frequency")
+                        .font(.caption)
                     Spacer()
                     Text(String(format: "%.1fs", sliderValue))
                         .monospacedDigit()
                         .foregroundColor(.gray)
                         .font(.caption)
-                    .help("Updates per second (lower = faster, higher = less CPU)")
                 }
                 Slider(
                     value: $sliderValue,
@@ -106,25 +103,28 @@ struct SettingsView: View {
                         }
                     }
                 )
-                .help("Adjust how frequently the display updates. Lower values (0.1s) are more responsive but use more CPU.")
             }
-            .font(.caption)
             
             // Launch at startup - centered
-            HStack {
-                Spacer()
-                Toggle("Launch at startup", isOn: Binding(
-                    get: { preferences.launchAtStartup },
-                    set: { preferences.setLaunchAtStartup($0) }
-                ))
-                .font(.caption)
-                .help("Automatically start CPUMeter when you log in")
-                Spacer()
-            }
-            .padding(.vertical, 12)
+            Toggle("Launch at startup", isOn: Binding(
+                get: { preferences.launchAtStartup },
+                set: { preferences.setLaunchAtStartup($0) }
+            ))
+            .font(.caption)
+            .help("Automatically start CPUMeter when you log in")
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 2)
             
             // Version and Reset
-            VStack(spacing: 6) {
+            VStack(spacing: 3) {
+                Button(action: { openActivityMonitor() }) {
+                    Text("Open Activity Monitor")
+                        .frame(maxWidth: .infinity)
+                        .font(.caption)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                
                 Button(action: { showResetConfirm = true }) {
                     Text("Reset to Defaults")
                         .frame(maxWidth: .infinity)
@@ -147,10 +147,19 @@ struct SettingsView: View {
                     .foregroundColor(.gray)
             }
         }
-        .padding(8)
-        .frame(width: 220, height: 300)
+        .padding(6)
+        .frame(width: 220, height: 320)
         .onAppear {
             sliderValue = preferences.updateFrequency
+        }
+    }
+    
+    private func openActivityMonitor() {
+        let activityMonitorURL = FileManager.default.urls(for: .applicationDirectory, in: .systemDomainMask).first?
+            .appendingPathComponent("Utilities/Activity Monitor.app")
+        
+        if let url = activityMonitorURL {
+            NSWorkspace.shared.open(url)
         }
     }
 }
