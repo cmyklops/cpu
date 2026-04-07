@@ -16,7 +16,7 @@ class StatusBarController: NSObject {
     }
     
     private func setupMenuBar() {
-        // Create status bar item with exact width matching graph
+        // Create status bar item with minimal length
         statusItem = NSStatusBar.system.statusItem(withLength: 35)
         
         // Create SwiftUI graph view
@@ -24,10 +24,29 @@ class StatusBarController: NSObject {
         graphView = NSHostingView(rootView: contentView)
         
         guard let hostingView = graphView, let button = statusItem?.button else { return }
+        
+        // Remove all button styling to minimize system padding
+        button.title = ""
+        button.image = nil
+        button.isBordered = false
+        button.bezelStyle = .recessed
+        button.controlSize = .mini
+        
+        // Set explicit frame to prevent system from adding padding
+        button.frame = NSRect(x: 0, y: 0, width: 35, height: 22)
+        button.bounds = NSRect(x: 0, y: 0, width: 35, height: 22)
+        
+        // Disable automatic sizing
+        button.autoresizesSubviews = false
+        button.autoresizingMask = []
+        
+        // Add hosting view with exact dimensions
         hostingView.frame = NSRect(x: 0, y: 0, width: 35, height: 22)
+        hostingView.autoresizingMask = []
+        hostingView.autoresizesSubviews = false
         
         button.addSubview(hostingView)
-        button.frame.size = NSSize(width: 35, height: 22)
+        
         button.action = #selector(toggleSettings)
         button.target = self
     }
@@ -45,10 +64,15 @@ class StatusBarController: NSObject {
     private func showSettings(from button: NSStatusBarButton) {
         // Create settings popover
         settingsPopover = NSPopover()
-        settingsPopover?.contentSize = NSSize(width: 220, height: 140)
+        settingsPopover?.contentSize = NSSize(width: 220, height: 300)
         settingsPopover?.behavior = .transient
         settingsPopover?.contentViewController = NSHostingController(rootView: SettingsView())
         
         settingsPopover?.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        
+        // Make popover window key so it gets focus and click-outside closes it
+        if let window = settingsPopover?.contentViewController?.view.window {
+            window.makeKey()
+        }
     }
 }

@@ -5,15 +5,21 @@ class PreferencesManager: ObservableObject {
     
     @Published var updateFrequency: Double = 1.0
     @Published var launchAtStartup: Bool = false
+    @Published var displayMode: String = "bars"  // "bars", "number", "gradient"
+    @Published var metricType: String = "CPU"    // "CPU" or "Memory"
     
     private let defaults = UserDefaults.standard
     private let updateFrequencyKey = "com.cpumeter.updateFrequency"
     private let launchAtStartupKey = "com.cpumeter.launchAtStartup"
+    private let displayModeKey = "com.cpumeter.displayMode"
+    private let metricTypeKey = "com.cpumeter.metricType"
     
     init() {
         self.updateFrequency = defaults.double(forKey: updateFrequencyKey) > 0 ? 
             defaults.double(forKey: updateFrequencyKey) : 1.0
         self.launchAtStartup = defaults.bool(forKey: launchAtStartupKey)
+        self.displayMode = defaults.string(forKey: displayModeKey) ?? "bars"
+        self.metricType = defaults.string(forKey: metricTypeKey) ?? "CPU"
     }
     
     func setUpdateFrequency(_ frequency: Double) {
@@ -61,5 +67,16 @@ class PreferencesManager: ObservableObject {
             .appendingPathComponent("Library/LaunchAgents/com.cpumeter.plist")
         
         try? FileManager.default.removeItem(at: loginItemsHelper)
+    }
+    
+    func setDisplayMode(_ mode: String) {
+        self.displayMode = mode
+        defaults.set(mode, forKey: displayModeKey)
+    }
+    
+    func setMetricType(_ metric: String) {
+        self.metricType = metric
+        defaults.set(metric, forKey: metricTypeKey)
+        CPUMonitor.shared.currentMetric = metric
     }
 }
