@@ -183,16 +183,16 @@ class CPUMonitor: NSObject, ObservableObject {
     private func getMemoryUsage() -> Double {
         // Get system-wide memory statistics
         var stats = vm_statistics64_data_t()
-        var count = mach_msg_type_number_t(MemoryLayout<vm_statistics64>.size / MemoryLayout<natural_t>.size)
+        // Count should be number of Int32 values in the struct
+        var count = mach_msg_type_number_t(MemoryLayout<vm_statistics64>.size / MemoryLayout<Int32>.size)
         
         let hostPort = machHostSelf()
         
         let result = withUnsafeMutablePointer(to: &stats) { ptr -> kern_return_t in
-            let infoPtr = UnsafeMutableRawPointer(ptr).assumingMemoryBound(to: Int32.self)
             return hostStatistics(
                 host: hostPort,
                 flavor: 4,  // HOST_VM_INFO64
-                host_info: infoPtr,
+                host_info: UnsafeMutableRawPointer(ptr),
                 host_info_count: &count
             )
         }
@@ -213,6 +213,7 @@ class CPUMonitor: NSObject, ObservableObject {
         
         // Calculate percentage
         let memoryPercentage = (Double(usedMemory) / Double(totalMemory)) * 100.0
+        
         return min(max(memoryPercentage, 0.0), 100.0)
     }
     
