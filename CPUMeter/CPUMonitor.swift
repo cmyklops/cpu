@@ -9,7 +9,7 @@ class CPUMonitor: NSObject, ObservableObject {
     
     @Published var cpuHistory: [Double] = []
     private var timer: Timer?
-    private let maxDataPoints = 30
+    private let maxDataPoints = 12
     
     override init() {
         super.init()

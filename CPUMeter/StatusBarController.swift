@@ -5,39 +5,24 @@ class StatusBarController: NSObject {
     static let shared = StatusBarController()
     
     private var statusItem: NSStatusItem?
-    private var popover: NSPopover?
-    private var cpuMonitor: CPUMonitor
+    private var graphView: NSHostingView<ContentView>?
     
     override init() {
-        self.cpuMonitor = CPUMonitor.shared
         super.init()
         setupMenuBar()
     }
     
     private func setupMenuBar() {
-        // Create status bar item  
-        statusItem = NSStatusBar.system.statusItem(withLength: 160)
-        guard let button = statusItem?.button else { return }
+        // Create status bar item with custom view
+        statusItem = NSStatusBar.system.statusItem(withLength: 120)
         
-        button.title = "CPU"
-        button.font = NSFont.systemFont(ofSize: 10, weight: .medium)
-        button.action = #selector(togglePopover)
-        button.target = self
+        // Create SwiftUI graph view
+        let contentView = ContentView()
+        graphView = NSHostingView(rootView: contentView)
         
-        // Create popover
-        popover = NSPopover()
-        popover?.contentSize = NSSize(width: 160, height: 60)
-        popover?.behavior = .transient
-        popover?.contentViewController = NSHostingController(rootView: ContentView())
-    }
-    
-    @objc private func togglePopover() {
-        guard let button = statusItem?.button else { return }
+        guard let hostingView = graphView else { return }
+        hostingView.frame = NSRect(x: 0, y: 0, width: 120, height: 24)
         
-        if let pop = popover, pop.isShown {
-            pop.performClose(button)
-        } else if let pop = popover {
-            pop.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-        }
+        statusItem?.button?.addSubview(hostingView)
     }
 }
