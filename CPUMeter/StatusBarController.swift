@@ -1,15 +1,17 @@
 import Cocoa
 import SwiftUI
 
-class StatusBarController: NSObject, ObservableObject {
+class StatusBarController: NSObject {
+    static let shared = StatusBarController()
+    
     private var statusItem: NSStatusItem?
     private var popover: NSPopover?
+    private var cpuMonitor: CPUMonitor
     
     override init() {
+        self.cpuMonitor = CPUMonitor.shared
         super.init()
-        DispatchQueue.main.async {
-            self.setupMenuBar()
-        }
+        setupMenuBar()
     }
     
     private func setupMenuBar() {
@@ -19,7 +21,7 @@ class StatusBarController: NSObject, ObservableObject {
         
         button.title = "CPU"
         button.font = NSFont.systemFont(ofSize: 10, weight: .medium)
-         button.action = #selector(togglePopover)
+        button.action = #selector(togglePopover)
         button.target = self
         
         // Create popover

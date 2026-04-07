@@ -2,13 +2,12 @@ import SwiftUI
 
 @main
 struct CPUMeterApp: App {
-    @StateObject private var statusBarController = StatusBarController()
-    
     init() {
-        // Prevent dock icon from appearing
-        NSApp.setActivationPolicy(.accessory)
-        // Trigger CPUMonitor singleton initialization
-        _ = CPUMonitor.shared
+        // Initialize in background to avoid blocking UI
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            NSApp.setActivationPolicy(.accessory)
+            _ = StatusBarController.shared
+        }
     }
     
     var body: some Scene {
