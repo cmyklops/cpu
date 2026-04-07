@@ -1,0 +1,227 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+		29B97313FDCFA39411CA2CEA = {
+			isa = PBXGroup;
+			children = (
+				29B97315FDCFA39411CA2CEA,
+				29B97317FDCFA39411CA2CEA,
+				19C313AEFEEC7853004C2DCA,
+			);
+			sourceTree = SOURCE_ROOT;
+		};
+		29B97314FDCFA39411CA2CEA = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					29B97316FDCFA39411CA2CEA = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = C01FCF4FFEEF11D20DC60CFA;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 1;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 29B97313FDCFA39411CA2CEA;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				29B97316FDCFA39411CA2CEA,
+			);
+		};
+		29B97315FDCFA39411CA2CEA = {
+			isa = PBXGroup;
+			children = (
+				08FB7796FE84155DC02AAC07,
+				1D3623260D0F684500981E48,
+			);
+			name = Sources;
+			sourceTree = SOURCE_ROOT;
+		};
+		29B97317FDCFA39411CA2CEA = {
+			isa = PBXGroup;
+			children = (
+				29B97323FDCFA39411CA2CEA,
+			);
+			name = Resources;
+			sourceTree = SOURCE_ROOT;
+		};
+		08FB7796FE84155DC02AAC07 = {
+			isa = PBXGroup;
+			children = (
+				08FB7797FE84155DC02AAC07,
+				6F0B8C092B5F8A1A00A1C8D7,
+				6F0B8C0A2B5F8A1A00A1C8D7,
+				6F0B8C0B2B5F8A1A00A1C8D7,
+				6F0B8C0C2B5F8A1A00A1C8D7,
+			);
+			name = "CPU Meter";
+			sourceTree = SOURCE_ROOT;
+		};
+		08FB7797FE84155DC02AAC07 = {
+			isa = PBXFileReference;
+			explicitFileType = sourcecode.swift;
+			name = CPUMeter.swift;
+			path = "CPUMeter/CPUMeter.swift";
+			sourceTree = SOURCE_ROOT;
+		};
+		6F0B8C092B5F8A1A00A1C8D7 = {
+			isa = PBXFileReference;
+			explicitFileType = sourcecode.swift;
+			name = CPUMonitor.swift;
+			path = "CPUMeter/CPUMonitor.swift";
+			sourceTree = SOURCE_ROOT;
+		};
+		6F0B8C0A2B5F8A1A00A1C8D7 = {
+			isa = PBXFileReference;
+			explicitFileType = sourcecode.swift;
+			name = StatusBarController.swift;
+			path = "CPUMeter/StatusBarController.swift";
+			sourceTree = SOURCE_ROOT;
+		};
+		6F0B8C0B2B5F8A1A00A1C8D7 = {
+			isa = PBXFileReference;
+			explicitFileType = sourcecode.swift;
+			name = CPUGraphView.swift;
+			path = "CPUMeter/CPUGraphView.swift";
+			sourceTree = SOURCE_ROOT;
+		};
+		6F0B8C0C2B5F8A1A00A1C8D7 = {
+			isa = PBXFileReference;
+			explicitFileType = sourcecode.swift;
+			name = ContentView.swift;
+			path = "CPUMeter/ContentView.swift";
+			sourceTree = SOURCE_ROOT;
+		};
+		1D3623260D0F684500981E48 = {
+			isa = PBXFileReference;
+			lastKnownFileType = file.plist;
+			name = Info.plist;
+			path = "CPUMeter/Info.plist";
+			sourceTree = SOURCE_ROOT;
+		};
+		19C313AEFEEC7853004C2DCA = {
+			isa = PBXFileReference;
+			explicitFileType = wrapper.framework;
+			name = Foundation.framework;
+			path = /System/Library/Frameworks/Foundation.framework;
+			sourceTree = ABSOLUTE;
+		};
+		29B97323FDCFA39411CA2CEA = {
+			isa = PBXFileReference;
+			lastKnownFileType = folder.assetcatalog;
+			name = Assets.xcassets;
+			path = "CPUMeter/Assets.xcassets";
+			sourceTree = SOURCE_ROOT;
+		};
+		29B97316FDCFA39411CA2CEA = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C01FCF4CFEEF11D20DC60CFA;
+			buildPhases = (
+				29B97318FDCFA39411CA2CEA,
+				29B9731DFDCFA39411CA2CEA,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = CPUMeter;
+			productName = CPUMeter;
+			productReference = EXECUTABLE_NAME;
+			productType = "com.apple.product-type.application";
+		};
+		29B97318FDCFA39411CA2CEA = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				08FB7798FE84155DC02AAC07,
+				6F0B8C0D2B5F8A1A00A1C8D7,
+				6F0B8C0E2B5F8A1A00A1C8D7,
+				6F0B8C0F2B5F8A1A00A1C8D7,
+				6F0B8C102B5F8A1A00A1C8D7,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		08FB7798FE84155DC02AAC07 = {
+			isa = PBXBuildFile;
+			fileRef = 08FB7797FE84155DC02AAC07;
+		};
+		6F0B8C0D2B5F8A1A00A1C8D7 = {
+			isa = PBXBuildFile;
+			fileRef = 6F0B8C092B5F8A1A00A1C8D7;
+		};
+		6F0B8C0E2B5F8A1A00A1C8D7 = {
+			isa = PBXBuildFile;
+			fileRef = 6F0B8C0A2B5F8A1A00A1C8D7;
+		};
+		6F0B8C0F2B5F8A1A00A1C8D7 = {
+			isa = PBXBuildFile;
+			fileRef = 6F0B8C0B2B5F8A1A00A1C8D7;
+		};
+		6F0B8C102B5F8A1A00A1C8D7 = {
+			isa = PBXBuildFile;
+			fileRef = 6F0B8C0C2B5F8A1A00A1C8D7;
+		};
+		29B9731DFDCFA39411CA2CEA = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C01FCF4CFEEF11D20DC60CFA = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C01FCF4DFEEF11D20DC60CFA,
+				C01FCF4EFEEF11D20DC60CFA,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C01FCF4DFEEF11D20DC60CFA = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "";
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				PRODUCT_NAME = CPUMeter;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.9;
+				INFOPLIST_FILE = "CPUMeter/Info.plist";
+			};
+			name = Debug;
+		};
+		C01FCF4EFEEF11D20DC60CFA = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "";
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				PRODUCT_NAME = CPUMeter;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.9;
+				INFOPLIST_FILE = "CPUMeter/Info.plist";
+			};
+			name = Release;
+		};
+		C01FCF4FFEEF11D20DC60CFA = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C01FCF4DFEEF11D20DC60CFA,
+				C01FCF4EFEEF11D20DC60CFA,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+	};
+	rootObject = 29B97314FDCFA39411CA2CEA;
+}
