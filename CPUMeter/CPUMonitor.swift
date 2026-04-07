@@ -10,18 +10,35 @@ class CPUMonitor: NSObject, ObservableObject {
     @Published var cpuHistory: [Double] = []
     private var timer: Timer?
     private let maxDataPoints = 12
+    private var updateInterval: Double = 1.0
     
     override init() {
         super.init()
         startMonitoring()
+        
+        // Listen for update frequency changes
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(updateFrequencyChanged(_:)),
+            name: NSNotification.Name("UpdateFrequencyChanged"),
+            object: nil
+        )
     }
     
     deinit {
+        NotificationCenter.default.removeObserver(self)
         stopMonitoring()
     }
     
+    @objc private func updateFrequencyChanged(_ notification: Notification) {
+        if let frequency = notification.object as? Double {
+            self.updateInterval = frequency
+            restartMonitoring()
+        }
+    }
+    
     private func startMonitoring() {
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+        timer = Timer.scheduledTimer(withTimeInterval: updateInterval, repeats: true) { [weak self] _ in
             self?.updateCPU()
         }
         // Trigger first update immediately
@@ -31,6 +48,11 @@ class CPUMonitor: NSObject, ObservableObject {
     private func stopMonitoring() {
         timer?.invalidate()
         timer = nil
+    }
+    
+    private func restartMonitoring() {
+        stopMonitoring()
+        startMonitoring()
     }
     
     private func updateCPU() {
