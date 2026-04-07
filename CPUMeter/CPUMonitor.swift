@@ -19,11 +19,44 @@ private struct task_vm_info {
 private typealias task_vm_info_data_t = task_vm_info
 
 // VM statistics for system memory
+// Real struct from macOS mach/vm_statistics.h (160 bytes total)
 private struct vm_statistics64 {
-    var free_count: Int32 = 0
-    var active_count: Int32 = 0
-    var inactive_count: Int32 = 0
-    var wire_count: Int32 = 0
+    // First 4 natural_t (UInt32) fields
+    var free_count: UInt32 = 0
+    var active_count: UInt32 = 0
+    var inactive_count: UInt32 = 0
+    var wire_count: UInt32 = 0
+    
+    // 13 uint64_t fields
+    var zero_fill_count: UInt64 = 0
+    var reactivations: UInt64 = 0
+    var pageins: UInt64 = 0
+    var pageouts: UInt64 = 0
+    var faults: UInt64 = 0
+    var cow_faults: UInt64 = 0
+    var lookups: UInt64 = 0
+    var hits: UInt64 = 0
+    var purges: UInt64 = 0
+    
+    // natural_t fields
+    var purgeable_count: UInt32 = 0
+    var speculative_count: UInt32 = 0
+    
+    // More uint64_t fields (rev1)
+    var decompressions: UInt64 = 0
+    var compressions: UInt64 = 0
+    var swapins: UInt64 = 0
+    var swapouts: UInt64 = 0
+    
+    // More natural_t fields
+    var compressor_page_count: UInt32 = 0
+    var throttled_count: UInt32 = 0
+    var external_page_count: UInt32 = 0
+    var internal_page_count: UInt32 = 0
+    
+    // Last uint64_t field (rev2)
+    var total_uncompressed_pages_in_compressor: UInt64 = 0
+    var swapped_count: UInt64 = 0
 }
 
 private typealias vm_statistics64_data_t = vm_statistics64
@@ -53,6 +86,14 @@ private func hostStatistics(
     host_info_count: UnsafeMutablePointer<mach_msg_type_number_t>
 ) -> kern_return_t
 
+@_silgen_name("host_statistics64")
+private func hostStatistics64(
+    host: mach_port_t,
+    flavor: Int32,
+    host_info: UnsafeMutableRawPointer,
+    host_info_count: UnsafeMutablePointer<mach_msg_type_number_t>
+) -> kern_return_t
+
 private let HOST_CPU_LOAD_INFO = 3
 
 class CPUMonitor: NSObject, ObservableObject {
@@ -67,12 +108,34 @@ class CPUMonitor: NSObject, ObservableObject {
     @Published var peakValue: Double = 0.0
     @Published var showStats: Bool = false
     
-    private var timer: Timer?
+    private var timer: DispatchSourceTimer?
+    private let timerQueue = DispatchQueue(label: "com.cpumeter.timer", qos: .userInitiated)
     private let maxDataPoints = 12
     private var updateInterval: Double = 1.0
     private var lastFrequencyChangeTime: Date = Date.distantPast
     private var lastCPUTicks: (user: UInt64, system: UInt64, idle: UInt64, nice: UInt64)? = nil
-    private let smoothingFactor: Double = 0.6  // EMA smoothing (0.6 = 60% current, 40% history)
+    
+    // Pre-calculated page size
+    private let pageSize: UInt64 = UInt64(getpagesize())
+    
+    // Stale data detection
+    private var lastSuccessfulUpdate: Date = Date()
+    @Published var isDataFresh: Bool = true
+    private let staleDataThreshold: TimeInterval = 5.0  // Consider data stale after 5 seconds
+    
+    private var errorCount: Int = 0
+    private let maxErrorThreshold: Int = 10
+    
+    // Dynamic EMA factor based on update frequency (slower = lower factor)
+    private var smoothingFactor: Double {
+        switch updateInterval {
+        case ...0.2: return 0.75  // Fast updates, more aggressive smoothing
+        case 0.2..<0.5: return 0.7
+        case 0.5..<1.0: return 0.65
+        case 1.0..<2.0: return 0.6
+        default: return 0.55  // Slow updates, less aggressive smoothing
+        }
+    }
     
     override init() {
         super.init()
@@ -110,15 +173,23 @@ class CPUMonitor: NSObject, ObservableObject {
     }
     
     private func startMonitoring() {
-        timer = Timer.scheduledTimer(withTimeInterval: updateInterval, repeats: true) { [weak self] _ in
+        let queue = timerQueue
+        let timer = DispatchSource.makeTimerSource(queue: queue)
+        let intervalInSeconds = UInt64(updateInterval * 1_000_000_000)  // Convert to nanoseconds
+        
+        timer.schedule(deadline: .now(), repeating: .nanoseconds(Int(intervalInSeconds)))
+        timer.setEventHandler { [weak self] in
             self?.updateCPU()
         }
+        
+        timer.resume()
+        self.timer = timer
         // Trigger first update immediately
         updateCPU()
     }
     
     private func stopMonitoring() {
-        timer?.invalidate()
+        timer?.cancel()
         timer = nil
     }
     
@@ -127,11 +198,37 @@ class CPUMonitor: NSObject, ObservableObject {
         startMonitoring()
     }
     
+    private func debugLog(_ message: String) {
+        #if DEBUG
+        NSLog("[CPUMeter] \(message)")
+        #endif
+    }
+    
     private func updateCPU() {
         let cpuUsage = getCPUUsage()
         let memoryUsage = getMemoryUsage()
         
+        // Skip update if measurements failed (negative = error)
+        guard cpuUsage >= 0 && memoryUsage >= 0 else {
+            errorCount += 1
+            if errorCount > maxErrorThreshold {
+                debugLog("Warning: \(errorCount) consecutive measurement failures")
+            }
+            DispatchQueue.main.async {
+                let timeSinceLastUpdate = Date().timeIntervalSince(self.lastSuccessfulUpdate)
+                self.isDataFresh = timeSinceLastUpdate < self.staleDataThreshold
+            }
+            return
+        }
+        
+        lastSuccessfulUpdate = Date()
+        errorCount = 0
+        
         DispatchQueue.main.async {
+            // Check if data is stale
+            let timeSinceLastUpdate = Date().timeIntervalSince(self.lastSuccessfulUpdate)
+            self.isDataFresh = timeSinceLastUpdate < self.staleDataThreshold
+            
             // Apply exponential moving average smoothing to CPU
             let smoothedCPU: Double
             if self.cpuHistory.isEmpty {
@@ -158,17 +255,21 @@ class CPUMonitor: NSObject, ObservableObject {
                 self.memoryHistory.removeFirst()
             }
             
-            // Update current value based on metric
-            self.currentValue = self.currentMetric == "CPU" ? smoothedCPU : smoothedMemory
+            // Always update current value display with latest reading
+            if self.currentMetric == "CPU" {
+                self.currentValue = smoothedCPU
+            } else {
+                self.currentValue = smoothedMemory
+            }
             
-            // Calculate average and peak
+            // Calculate average and peak (lightweight)
             let activeHistory = self.currentMetric == "CPU" ? self.cpuHistory : self.memoryHistory
             if !activeHistory.isEmpty {
                 self.averageValue = activeHistory.reduce(0, +) / Double(activeHistory.count)
                 self.peakValue = activeHistory.max() ?? 0
             }
             
-            // Increment positions of highlighted bars
+            // Always increment positions of highlighted bars
             var updatedPositions = Set<Int>()
             for position in self.highlightedBarPositions {
                 let newPosition = position + 1
@@ -183,13 +284,12 @@ class CPUMonitor: NSObject, ObservableObject {
     private func getMemoryUsage() -> Double {
         // Get system-wide memory statistics
         var stats = vm_statistics64_data_t()
-        // Count should be number of Int32 values in the struct
         var count = mach_msg_type_number_t(MemoryLayout<vm_statistics64>.size / MemoryLayout<Int32>.size)
         
         let hostPort = machHostSelf()
         
         let result = withUnsafeMutablePointer(to: &stats) { ptr -> kern_return_t in
-            return hostStatistics(
+            return hostStatistics64(
                 host: hostPort,
                 flavor: 4,  // HOST_VM_INFO64
                 host_info: UnsafeMutableRawPointer(ptr),
@@ -198,23 +298,22 @@ class CPUMonitor: NSObject, ObservableObject {
         }
         
         guard result == 0 else {
-            return 0.0
+            debugLog("Memory query failed with error code: \(result)")
+            return -1.0  // Return negative to signal error
         }
         
-        // Get page size
-        let pageSize = UInt64(getpagesize())
-        
-        // Calculate used memory: active + inactive + wired
+        // Calculate used memory: active + inactive + wired (use pre-cached page size)
         let usedPages = UInt64(stats.active_count) + UInt64(stats.inactive_count) + UInt64(stats.wire_count)
         let usedMemory = usedPages * pageSize
         
         // Total physical memory
         let totalMemory = UInt64(ProcessInfo.processInfo.physicalMemory)
         
-        // Calculate percentage
-        let memoryPercentage = (Double(usedMemory) / Double(totalMemory)) * 100.0
+        // Calculate percentage and round to 0.1GB precision
+        let memoryPercentage = totalMemory > 0 ? (Double(usedMemory) / Double(totalMemory)) * 100.0 : 0.0
+        let roundedPercentage = min(max(memoryPercentage, 0.0), 100.0)
         
-        return min(max(memoryPercentage, 0.0), 100.0)
+        return roundedPercentage
     }
     
     private func getCPUUsage() -> Double {
@@ -234,7 +333,8 @@ class CPUMonitor: NSObject, ObservableObject {
         }
         
         guard result == 0 else {  // KERN_SUCCESS = 0
-            return 0.0
+            debugLog("CPU query failed with error code: \(result)")
+            return -1.0  // Return negative to signal error
         }
         
         let user = UInt64(cpuLoadInfo.cpu_ticks.0)

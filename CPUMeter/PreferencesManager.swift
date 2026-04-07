@@ -14,23 +14,56 @@ class PreferencesManager: ObservableObject {
     private let displayModeKey = "com.cpumeter.displayMode"
     private let metricTypeKey = "com.cpumeter.metricType"
     
+    // Debounce timer for throttled writes
+    private var debounceTimers: [String: Timer] = [:]
+    private let debounceInterval: TimeInterval = 0.5
+    
     init() {
-        self.updateFrequency = defaults.double(forKey: updateFrequencyKey) > 0 ? 
-            defaults.double(forKey: updateFrequencyKey) : 1.0
-        self.launchAtStartup = defaults.bool(forKey: launchAtStartupKey)
-        self.displayMode = defaults.string(forKey: displayModeKey) ?? "bars"
-        self.metricType = defaults.string(forKey: metricTypeKey) ?? "CPU"
+        // Batch load all settings with fallback to defaults if corrupted
+        do {
+            let frequency = defaults.double(forKey: updateFrequencyKey)
+            self.updateFrequency = frequency > 0 ? frequency : 1.0
+            self.launchAtStartup = defaults.bool(forKey: launchAtStartupKey)
+            self.displayMode = defaults.string(forKey: displayModeKey) ?? "bars"
+            self.metricType = defaults.string(forKey: metricTypeKey) ?? "CPU"
+        } catch {
+            // If preferences are corrupted, reset to defaults
+            #if DEBUG
+            NSLog("[CPUMeter] Error loading preferences, resetting to defaults: \(error)")
+            #endif
+            self.updateFrequency = 1.0
+            self.launchAtStartup = false
+            self.displayMode = "bars"
+            self.metricType = "CPU"
+        }
+    }
+    
+    private func scheduleDebouncedWrite(key: String, block: @escaping () -> Void) {
+        // Cancel existing timer for this key
+        debounceTimers[key]?.invalidate()
+        
+        // Schedule new write after debounce interval
+        let timer = Timer.scheduledTimer(withTimeInterval: debounceInterval, repeats: false) { [weak self] _ in
+            block()
+            self?.debounceTimers[key] = nil
+        }
+        debounceTimers[key] = timer
     }
     
     func setUpdateFrequency(_ frequency: Double) {
-        self.updateFrequency = frequency
-        defaults.set(frequency, forKey: updateFrequencyKey)
-        NotificationCenter.default.post(name: NSNotification.Name("UpdateFrequencyChanged"), object: frequency)
+        let validatedFrequency = max(0.1, min(2.0, frequency))  // Clamp to 0.1-2.0s
+        self.updateFrequency = validatedFrequency
+        scheduleDebouncedWrite(key: updateFrequencyKey) { [weak self] in
+            self?.defaults.set(validatedFrequency, forKey: self?.updateFrequencyKey ?? "")
+        }
+        NotificationCenter.default.post(name: NSNotification.Name("UpdateFrequencyChanged"), object: validatedFrequency)
     }
     
     func setLaunchAtStartup(_ enabled: Bool) {
         self.launchAtStartup = enabled
-        defaults.set(enabled, forKey: launchAtStartupKey)
+        scheduleDebouncedWrite(key: launchAtStartupKey) { [weak self] in
+            self?.defaults.set(enabled, forKey: self?.launchAtStartupKey ?? "")
+        }
         
         if enabled {
             enableLaunchAtStartup()
@@ -71,12 +104,31 @@ class PreferencesManager: ObservableObject {
     
     func setDisplayMode(_ mode: String) {
         self.displayMode = mode
-        defaults.set(mode, forKey: displayModeKey)
+        scheduleDebouncedWrite(key: displayModeKey) { [weak self] in
+            self?.defaults.set(mode, forKey: self?.displayModeKey ?? "")
+        }
     }
     
     func setMetricType(_ metric: String) {
         self.metricType = metric
-        defaults.set(metric, forKey: metricTypeKey)
+        scheduleDebouncedWrite(key: metricTypeKey) { [weak self] in
+            self?.defaults.set(metric, forKey: self?.metricTypeKey ?? "")
+        }
         CPUMonitor.shared.currentMetric = metric
+    }
+    
+    func resetToDefaults() {
+        self.updateFrequency = 1.0
+        self.displayMode = "bars"
+        self.metricType = "CPU"
+        self.launchAtStartup = false
+        
+        defaults.set(1.0, forKey: updateFrequencyKey)
+        defaults.set("bars", forKey: displayModeKey)
+        defaults.set("CPU", forKey: metricTypeKey)
+        defaults.set(false, forKey: launchAtStartupKey)
+        
+        disableLaunchAtStartup()
+        NotificationCenter.default.post(name: NSNotification.Name("UpdateFrequencyChanged"), object: 1.0)
     }
 }

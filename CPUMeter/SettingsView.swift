@@ -4,19 +4,38 @@ struct SettingsView: View {
     @ObservedObject var preferences = PreferencesManager.shared
     @ObservedObject var cpuMonitor = CPUMonitor.shared
     @State private var sliderValue: Double = 1.0
+    @State private var showResetConfirm = false
+    
+    private let appVersion = "1.0.0"
     
     var body: some View {
         VStack(alignment: .center, spacing: 8) {
+            // Data freshness indicator
+            if !cpuMonitor.isDataFresh {
+                HStack {
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .foregroundColor(.orange)
+                    Text("Data not updating")
+                        .font(.caption2)
+                    Spacer()
+                }
+                .padding(4)
+                .background(Color.orange.opacity(0.1))
+                .cornerRadius(4)
+            }
+            
             // Metric selection
             Picker("Metric", selection: Binding(
                 get: { preferences.metricType },
                 set: { preferences.setMetricType($0) }
             )) {
-                Text("CPU").tag("CPU")
-                Text("Memory").tag("Memory")
+                Text("CPU").tag("CPU").help("Monitor processor usage")
+                Text("Memory").tag("Memory").help("Monitor RAM usage")
             }
             .pickerStyle(.segmented)
             .frame(maxWidth: .infinity)
+            .accessibilityLabel("Metric Type")
+            .help("Choose what to monitor: CPU (processor) or Memory (RAM)")
             
             // Display mode selection
             VStack(alignment: .leading, spacing: 3) {
@@ -27,13 +46,14 @@ struct SettingsView: View {
                     get: { preferences.displayMode },
                     set: { preferences.setDisplayMode($0) }
                 )) {
-                    Text("Bars").tag("bars")
-                    Text("Number").tag("number")
-                    Text("Gradient").tag("gradient")
+                    Text("Bars").tag("bars").help("Show as horizontal bars")
+                    Text("Number").tag("number").help("Show as percentage")
+                    Text("Gradient").tag("gradient").help("Show as vertical fill")
                 }
                 .pickerStyle(.segmented)
             }
             .frame(maxWidth: .infinity)
+            .help("Choose display style for the menu bar indicator")
             
             Divider()
                 .padding(.vertical, 2)
@@ -74,6 +94,7 @@ struct SettingsView: View {
                         .monospacedDigit()
                         .foregroundColor(.gray)
                         .font(.caption)
+                    .help("Updates per second (lower = faster, higher = less CPU)")
                 }
                 Slider(
                     value: $sliderValue,
@@ -85,6 +106,7 @@ struct SettingsView: View {
                         }
                     }
                 )
+                .help("Adjust how frequently the display updates. Lower values (0.1s) are more responsive but use more CPU.")
             }
             .font(.caption)
             
@@ -96,19 +118,34 @@ struct SettingsView: View {
                     set: { preferences.setLaunchAtStartup($0) }
                 ))
                 .font(.caption)
+                .help("Automatically start CPUMeter when you log in")
                 Spacer()
             }
             .padding(.vertical, 12)
             
-            // Quit button
-            Button(action: {
-                NSApplication.shared.terminate(nil)
-            }) {
-                Text("Quit CPU Meter")
-                    .frame(maxWidth: .infinity)
+            // Version and Reset
+            VStack(spacing: 6) {
+                Button(action: { showResetConfirm = true }) {
+                    Text("Reset to Defaults")
+                        .frame(maxWidth: .infinity)
+                        .font(.caption)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .alert("Reset Settings?", isPresented: $showResetConfirm) {
+                    Button("Cancel", role: .cancel) { }
+                    Button("Reset", role: .destructive) {
+                        preferences.resetToDefaults()
+                        sliderValue = 1.0
+                    }
+                } message: {
+                    Text("This will restore all settings to factory defaults.")
+                }
+                
+                Text("CPUMeter v\(appVersion)")
+                    .font(.caption2)
+                    .foregroundColor(.gray)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.small)
         }
         .padding(8)
         .frame(width: 220, height: 300)

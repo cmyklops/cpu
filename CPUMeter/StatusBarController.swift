@@ -62,17 +62,20 @@ class StatusBarController: NSObject {
     }
     
     private func showSettings(from button: NSStatusBarButton) {
-        // Create settings popover
-        settingsPopover = NSPopover()
-        settingsPopover?.contentSize = NSSize(width: 220, height: 300)
-        settingsPopover?.behavior = .transient
-        settingsPopover?.contentViewController = NSHostingController(rootView: SettingsView())
+        // Lazy initialize popover (create only once)
+        if settingsPopover == nil {
+            settingsPopover = NSPopover()
+            settingsPopover?.contentSize = NSSize(width: 220, height: 300)
+            settingsPopover?.behavior = .transient
+            settingsPopover?.contentViewController = NSHostingController(rootView: SettingsView())
+        }
         
-        settingsPopover?.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-        
-        // Make popover window key so it gets focus and click-outside closes it
-        if let window = settingsPopover?.contentViewController?.view.window {
-            window.makeKey()
+        if let popover = settingsPopover {
+            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            // Make popover window key so it gets focus and click-outside closes it
+            if let window = popover.contentViewController?.view.window {
+                window.makeKey()
+            }
         }
     }
 }
