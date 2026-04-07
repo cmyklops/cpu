@@ -9,7 +9,7 @@ struct SettingsView: View {
     private let appVersion = "1.0.0"
     
     var body: some View {
-        VStack(alignment: .center, spacing: 4) {
+        VStack(alignment: .center, spacing: 3) {
             // Data freshness indicator
             if !cpuMonitor.isDataFresh {
                 HStack {
@@ -33,23 +33,21 @@ struct SettingsView: View {
                 Text("Memory").tag("Memory").help("Monitor RAM usage")
             }
             .pickerStyle(.segmented)
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: 160)
             .accessibilityLabel("Metric Type")
             .help("Choose what to monitor: CPU (processor) or Memory (RAM)")
             
             // Display mode selection
-            VStack(alignment: .leading, spacing: 3) {
-                Picker("", selection: Binding(
-                    get: { preferences.displayMode },
-                    set: { preferences.setDisplayMode($0) }
-                )) {
-                    Text("Bars").tag("bars").help("Show as horizontal bars")
-                    Text("Number").tag("number").help("Show as percentage")
-                    Text("Gradient").tag("gradient").help("Show as vertical fill")
-                }
-                .pickerStyle(.segmented)
+            Picker("", selection: Binding(
+                get: { preferences.displayMode },
+                set: { preferences.setDisplayMode($0) }
+            )) {
+                Text("Bars").tag("bars").help("Show as horizontal bars")
+                Text("Number").tag("number").help("Show as percentage")
+                Text("Gradient").tag("gradient").help("Show as vertical fill")
             }
-            .frame(maxWidth: .infinity)
+            .pickerStyle(.segmented)
+            .frame(maxWidth: 160)
             .help("Choose display style for the menu bar indicator")
             
             Divider()
@@ -147,8 +145,8 @@ struct SettingsView: View {
                     .foregroundColor(.gray)
             }
         }
-        .padding(6)
-        .frame(width: 220, height: 320)
+        .padding(4)
+        .frame(width: 220, height: 280)
         .onAppear {
             sliderValue = preferences.updateFrequency
         }
