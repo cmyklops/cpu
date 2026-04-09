@@ -139,6 +139,8 @@ class CPUMonitor: NSObject, ObservableObject {
     
     override init() {
         super.init()
+        // Sync metric from saved preferences
+        self.currentMetric = PreferencesManager.shared.metricType
         startMonitoring()
         
         // Listen for update frequency changes
@@ -206,7 +208,7 @@ class CPUMonitor: NSObject, ObservableObject {
     
     private func updateCPU() {
         let cpuUsage = getCPUUsage()
-        let memoryUsage = getMemoryUsage()
+        let memoryUsage = getMemoryPressure()
         
         // Skip update if measurements failed (negative = error)
         guard cpuUsage >= 0 && memoryUsage >= 0 else {
@@ -221,10 +223,10 @@ class CPUMonitor: NSObject, ObservableObject {
             return
         }
         
-        lastSuccessfulUpdate = Date()
         errorCount = 0
         
         DispatchQueue.main.async {
+            self.lastSuccessfulUpdate = Date()
             // Check if data is stale
             let timeSinceLastUpdate = Date().timeIntervalSince(self.lastSuccessfulUpdate)
             self.isDataFresh = timeSinceLastUpdate < self.staleDataThreshold
@@ -281,7 +283,7 @@ class CPUMonitor: NSObject, ObservableObject {
         }
     }
     
-    private func getMemoryUsage() -> Double {
+    private func getMemoryPressure() -> Double {
         // Get system-wide memory statistics
         var stats = vm_statistics64_data_t()
         var count = mach_msg_type_number_t(MemoryLayout<vm_statistics64>.size / MemoryLayout<Int32>.size)
@@ -302,15 +304,16 @@ class CPUMonitor: NSObject, ObservableObject {
             return -1.0  // Return negative to signal error
         }
         
-        // Calculate used memory: active + inactive + wired (use pre-cached page size)
-        let usedPages = UInt64(stats.active_count) + UInt64(stats.inactive_count) + UInt64(stats.wire_count)
-        let usedMemory = usedPages * pageSize
+        // Calculate memory pressure: app memory (internal - purgeable) + wired + compressed
+        let appPages = UInt64(stats.internal_page_count) - UInt64(stats.purgeable_count)
+        let pressurePages = appPages + UInt64(stats.wire_count) + UInt64(stats.compressor_page_count)
+        let pressureMemory = pressurePages * pageSize
         
         // Total physical memory
         let totalMemory = UInt64(ProcessInfo.processInfo.physicalMemory)
         
-        // Calculate percentage and round to 0.1GB precision
-        let memoryPercentage = totalMemory > 0 ? (Double(usedMemory) / Double(totalMemory)) * 100.0 : 0.0
+        // Calculate percentage
+        let memoryPercentage = totalMemory > 0 ? (Double(pressureMemory) / Double(totalMemory)) * 100.0 : 0.0
         let roundedPercentage = min(max(memoryPercentage, 0.0), 100.0)
         
         return roundedPercentage

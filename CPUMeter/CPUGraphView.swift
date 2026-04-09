@@ -101,7 +101,7 @@ struct CPUGraphView: View {
         }
         .frame(width: 35, height: 22)
         .clipped()
-        .accessibilityLabel(cpuMonitor.currentMetric == "CPU" ? "CPU meter" : "Memory meter")
+        .accessibilityLabel(cpuMonitor.currentMetric == "CPU" ? "CPU meter" : "Memory pressure meter")
         .accessibilityValue(String(format: "%.0f%%", cpuMonitor.currentValue))
     }
 }

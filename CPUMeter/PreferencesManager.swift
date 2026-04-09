@@ -19,23 +19,12 @@ class PreferencesManager: ObservableObject {
     private let debounceInterval: TimeInterval = 0.5
     
     init() {
-        // Batch load all settings with fallback to defaults if corrupted
-        do {
-            let frequency = defaults.double(forKey: updateFrequencyKey)
-            self.updateFrequency = frequency > 0 ? frequency : 1.0
-            self.launchAtStartup = defaults.bool(forKey: launchAtStartupKey)
-            self.displayMode = defaults.string(forKey: displayModeKey) ?? "bars"
-            self.metricType = defaults.string(forKey: metricTypeKey) ?? "CPU"
-        } catch {
-            // If preferences are corrupted, reset to defaults
-            #if DEBUG
-            NSLog("[CPUMeter] Error loading preferences, resetting to defaults: \(error)")
-            #endif
-            self.updateFrequency = 1.0
-            self.launchAtStartup = false
-            self.displayMode = "bars"
-            self.metricType = "CPU"
-        }
+        // Batch load all settings with fallback to defaults
+        let frequency = defaults.double(forKey: updateFrequencyKey)
+        self.updateFrequency = frequency > 0 ? frequency : 1.0
+        self.launchAtStartup = defaults.bool(forKey: launchAtStartupKey)
+        self.displayMode = defaults.string(forKey: displayModeKey) ?? "bars"
+        self.metricType = defaults.string(forKey: metricTypeKey) ?? "CPU"
     }
     
     private func scheduleDebouncedWrite(key: String, block: @escaping () -> Void) {
@@ -53,16 +42,16 @@ class PreferencesManager: ObservableObject {
     func setUpdateFrequency(_ frequency: Double) {
         let validatedFrequency = max(0.1, min(2.0, frequency))  // Clamp to 0.1-2.0s
         self.updateFrequency = validatedFrequency
-        scheduleDebouncedWrite(key: updateFrequencyKey) { [weak self] in
-            self?.defaults.set(validatedFrequency, forKey: self?.updateFrequencyKey ?? "")
+        scheduleDebouncedWrite(key: updateFrequencyKey) { [weak self, updateFrequencyKey] in
+            self?.defaults.set(validatedFrequency, forKey: updateFrequencyKey)
         }
         NotificationCenter.default.post(name: NSNotification.Name("UpdateFrequencyChanged"), object: validatedFrequency)
     }
     
     func setLaunchAtStartup(_ enabled: Bool) {
         self.launchAtStartup = enabled
-        scheduleDebouncedWrite(key: launchAtStartupKey) { [weak self] in
-            self?.defaults.set(enabled, forKey: self?.launchAtStartupKey ?? "")
+        scheduleDebouncedWrite(key: launchAtStartupKey) { [weak self, launchAtStartupKey] in
+            self?.defaults.set(enabled, forKey: launchAtStartupKey)
         }
         
         if enabled {
@@ -104,15 +93,15 @@ class PreferencesManager: ObservableObject {
     
     func setDisplayMode(_ mode: String) {
         self.displayMode = mode
-        scheduleDebouncedWrite(key: displayModeKey) { [weak self] in
-            self?.defaults.set(mode, forKey: self?.displayModeKey ?? "")
+        scheduleDebouncedWrite(key: displayModeKey) { [weak self, displayModeKey] in
+            self?.defaults.set(mode, forKey: displayModeKey)
         }
     }
     
     func setMetricType(_ metric: String) {
         self.metricType = metric
-        scheduleDebouncedWrite(key: metricTypeKey) { [weak self] in
-            self?.defaults.set(metric, forKey: self?.metricTypeKey ?? "")
+        scheduleDebouncedWrite(key: metricTypeKey) { [weak self, metricTypeKey] in
+            self?.defaults.set(metric, forKey: metricTypeKey)
         }
         CPUMonitor.shared.currentMetric = metric
     }

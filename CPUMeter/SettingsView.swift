@@ -3,13 +3,13 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject var preferences = PreferencesManager.shared
     @ObservedObject var cpuMonitor = CPUMonitor.shared
-    @State private var sliderValue: Double = 1.0
+    @State private var sliderValue: Double = PreferencesManager.shared.updateFrequency
     @State private var showResetConfirm = false
     
-    private let appVersion = "1.0.0"
+    private let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
     
     var body: some View {
-        VStack(alignment: .center, spacing: 3) {
+        VStack(alignment: .center, spacing: 6) {
             // Data freshness indicator
             if !cpuMonitor.isDataFresh {
                 HStack {
@@ -30,12 +30,11 @@ struct SettingsView: View {
                 set: { preferences.setMetricType($0) }
             )) {
                 Text("CPU").tag("CPU").help("Monitor processor usage")
-                Text("Memory").tag("Memory").help("Monitor RAM usage")
+                Text("Memory").tag("Memory").help("Monitor memory pressure")
             }
             .pickerStyle(.segmented)
-            .frame(maxWidth: 160)
             .accessibilityLabel("Metric Type")
-            .help("Choose what to monitor: CPU (processor) or Memory (RAM)")
+            .help("Choose what to monitor: CPU (processor) or Memory (pressure)")
             
             // Display mode selection
             Picker("", selection: Binding(
@@ -47,14 +46,13 @@ struct SettingsView: View {
                 Text("Gradient").tag("gradient").help("Show as vertical fill")
             }
             .pickerStyle(.segmented)
-            .frame(maxWidth: 160)
             .help("Choose display style for the menu bar indicator")
             
             Divider()
-                .padding(.vertical, 2)
+                .padding(.vertical, 6)
             
             // Stats display
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {
                     Text("Current")
                     Spacer()
@@ -78,7 +76,7 @@ struct SettingsView: View {
             .foregroundColor(.gray)
             
             Divider()
-                .padding(.vertical, 1)
+                .padding(.vertical, 6)
             
             // Update frequency
             VStack(alignment: .leading, spacing: 2) {
@@ -102,6 +100,7 @@ struct SettingsView: View {
                     }
                 )
             }
+            .padding(.bottom, 4)
             
             // Launch at startup - centered
             Toggle("Launch at startup", isOn: Binding(
@@ -111,10 +110,13 @@ struct SettingsView: View {
             .font(.caption)
             .help("Automatically start CPUMeter when you log in")
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 2)
+            .padding(.vertical, 4)
+            
+            Divider()
+                .padding(.vertical, 6)
             
             // Version and Reset
-            VStack(spacing: 3) {
+            VStack(spacing: 6) {
                 Button(action: { openActivityMonitor() }) {
                     Text("Open Activity Monitor")
                         .frame(maxWidth: .infinity)
@@ -140,13 +142,21 @@ struct SettingsView: View {
                     Text("This will restore all settings to factory defaults.")
                 }
                 
+                Button(action: { NSApplication.shared.terminate(nil) }) {
+                    Text("Quit CPUMeter")
+                        .frame(maxWidth: .infinity)
+                        .font(.caption)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                
                 Text("CPUMeter v\(appVersion)")
                     .font(.caption2)
                     .foregroundColor(.gray)
             }
         }
-        .padding(4)
-        .frame(width: 220, height: 280)
+        .padding(12)
+        .frame(width: 240)
         .onAppear {
             sliderValue = preferences.updateFrequency
         }

@@ -65,7 +65,7 @@ class StatusBarController: NSObject {
         // Lazy initialize popover (create only once)
         if settingsPopover == nil {
             settingsPopover = NSPopover()
-            settingsPopover?.contentSize = NSSize(width: 220, height: 300)
+            settingsPopover?.contentSize = NSSize(width: 240, height: 440)
             settingsPopover?.behavior = .transient
             settingsPopover?.contentViewController = NSHostingController(rootView: SettingsView())
         }
