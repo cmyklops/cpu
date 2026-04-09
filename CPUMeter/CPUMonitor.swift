@@ -107,6 +107,7 @@ class CPUMonitor: NSObject, ObservableObject {
     @Published var averageValue: Double = 0.0
     @Published var peakValue: Double = 0.0
     @Published var showStats: Bool = false
+    @Published var memoryPressureLevel: Int = 0  // 0=green, 1=yellow, 2=red
     
     private var timer: DispatchSourceTimer?
     private let timerQueue = DispatchQueue(label: "com.cpumeter.timer", qos: .userInitiated)
@@ -114,6 +115,13 @@ class CPUMonitor: NSObject, ObservableObject {
     private var updateInterval: Double = 1.0
     private var lastFrequencyChangeTime: Date = Date.distantPast
     private var lastCPUTicks: (user: UInt64, system: UInt64, idle: UInt64, nice: UInt64)? = nil
+    
+    // Pressure delta tracking
+    private var lastSwapouts: UInt64 = 0
+    private var lastCompressions: UInt64 = 0
+    private var isFirstMemorySample: Bool = true
+    private var lastSwapDelta: UInt64 = 0
+    private var lastCompressionDelta: UInt64 = 0
     
     // Pre-calculated page size
     private let pageSize: UInt64 = UInt64(getpagesize())
@@ -271,6 +279,17 @@ class CPUMonitor: NSObject, ObservableObject {
                 self.peakValue = activeHistory.max() ?? 0
             }
             
+            // Update memory pressure level from latest deltas
+            let swapD = self.lastSwapDelta
+            let compD = self.lastCompressionDelta
+            if swapD >= 100 {
+                self.memoryPressureLevel = 2  // red
+            } else if compD >= 1000 || swapD > 0 {
+                self.memoryPressureLevel = 1  // yellow
+            } else {
+                self.memoryPressureLevel = 0  // green
+            }
+            
             // Always increment positions of highlighted bars
             var updatedPositions = Set<Int>()
             for position in self.highlightedBarPositions {
@@ -304,17 +323,23 @@ class CPUMonitor: NSObject, ObservableObject {
             return -1.0  // Return negative to signal error
         }
         
-        // Calculate memory pressure: app memory (internal - purgeable) + wired + compressed
+        // Calculate app memory only (internal - purgeable), excludes wired/compressed OS overhead
         let appPages = UInt64(stats.internal_page_count) - UInt64(stats.purgeable_count)
-        let pressurePages = appPages + UInt64(stats.wire_count) + UInt64(stats.compressor_page_count)
-        let pressureMemory = pressurePages * pageSize
+        let appMemory = appPages * pageSize
         
         // Total physical memory
         let totalMemory = UInt64(ProcessInfo.processInfo.physicalMemory)
         
         // Calculate percentage
-        let memoryPercentage = totalMemory > 0 ? (Double(pressureMemory) / Double(totalMemory)) * 100.0 : 0.0
+        let memoryPercentage = totalMemory > 0 ? (Double(appMemory) / Double(totalMemory)) * 100.0 : 0.0
         let roundedPercentage = min(max(memoryPercentage, 0.0), 100.0)
+        
+        // Compute swap/compression deltas for pressure level (skip first sample)
+        lastSwapDelta = isFirstMemorySample ? 0 : (stats.swapouts >= lastSwapouts ? stats.swapouts - lastSwapouts : 0)
+        lastCompressionDelta = isFirstMemorySample ? 0 : (stats.compressions >= lastCompressions ? stats.compressions - lastCompressions : 0)
+        lastSwapouts = stats.swapouts
+        lastCompressions = stats.compressions
+        isFirstMemorySample = false
         
         return roundedPercentage
     }

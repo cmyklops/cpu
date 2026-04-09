@@ -16,6 +16,13 @@ struct CPUGraphView: View {
     
     // Cache color for current value to avoid recalculation
     private var cachedColor: Color {
+        if cpuMonitor.currentMetric == "Memory" {
+            switch cpuMonitor.memoryPressureLevel {
+            case 2: return .red
+            case 1: return .yellow
+            default: return .green
+            }
+        }
         let value = cpuMonitor.currentValue
         if value < 33 {
             return .green

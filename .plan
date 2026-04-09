@@ -1,0 +1,119 @@
+# Plan: App Memory Percentage + Pressure-Aware Color
+
+## TL;DR
+The current memory formula in `getMemoryPressure()` includes compressed and wired pages,
+inflating the percentage to ~83% when actual app usage is ~27%. Change the percentage to
+show only app memory, and derive bar/gradient color from real pressure signals (swap and
+compression activity rates) instead of raw percentage thresholds.
+
+## Steps (2 parallel tracks + verification)
+
+### Track A: CPUMonitor.swift — App-memory-only percentage + pressure level
+
+1. **Change `getMemoryPressure()` formula** (~L309-311) — Replace:
+   ```swift
+   let appPages = UInt64(stats.internal_page_count) - UInt64(stats.purgeable_count)
+   let pressurePages = appPages + UInt64(stats.wire_count) + UInt64(stats.compressor_page_count)
+   let pressureMemory = pressurePages * pageSize
+   ```
+   With just app memory:
+   ```swift
+   let appPages = UInt64(stats.internal_page_count) - UInt64(stats.purgeable_count)
+   let appMemory = appPages * pageSize
+   ```
+   Then use `appMemory` instead of `pressureMemory` in the percentage calculation below it.
+
+2. **Add delta tracking properties** to `CPUMonitor` (near the other private vars ~L118):
+   ```swift
+   private var lastSwapouts: UInt64 = 0
+   private var lastCompressions: UInt64 = 0
+   private var isFirstSample: Bool = true
+   ```
+   These track cumulative counters from `vm_statistics64`. Deltas between samples = rate.
+
+3. **Compute pressure level in `getMemoryPressure()`** — After the percentage calc, before return:
+   ```swift
+   let swapDelta = isFirstSample ? 0 : (stats.swapouts - lastSwapouts)
+   let compressionDelta = isFirstSample ? 0 : (stats.compressions - lastCompressions)
+   lastSwapouts = stats.swapouts
+   lastCompressions = stats.compressions
+   isFirstSample = false
+   ```
+   Store these deltas for use in `updateCPU()`.
+
+4. **Add published pressure level** to `CPUMonitor` (near other @Published vars ~L108):
+   ```swift
+   @Published var memoryPressureLevel: Int = 0  // 0=green, 1=yellow, 2=red
+   ```
+   Also add private vars to pass deltas from `getMemoryPressure()` to `updateCPU()`:
+   ```swift
+   private var lastSwapDelta: UInt64 = 0
+   private var lastCompressionDelta: UInt64 = 0
+   ```
+   Set these in `getMemoryPressure()`, then in `updateCPU()` on the main queue, set:
+   - `memoryPressureLevel = 0` (green): swapDelta == 0 AND compressionDelta < 1000
+   - `memoryPressureLevel = 1` (yellow): compressionDelta >= 1000 OR (swapDelta > 0 AND swapDelta < 100)
+   - `memoryPressureLevel = 2` (red): swapDelta >= 100
+
+   Place the pressure level update in `updateCPU()` inside the existing `DispatchQueue.main.async`
+   block, after the smoothing/history logic, around where `currentValue` is set.
+
+### Track B: CPUGraphView.swift — Pressure-aware coloring
+
+5. **Split `cachedColor` by metric** (~L20-27). Current code:
+   ```swift
+   private var cachedColor: Color {
+       let value = cpuMonitor.currentValue
+       if value < 33 {
+           return .green
+       } else if value < 66 {
+           return .yellow
+       } else {
+           return .red
+       }
+   }
+   ```
+   Change to:
+   ```swift
+   private var cachedColor: Color {
+       if cpuMonitor.currentMetric == "Memory" {
+           switch cpuMonitor.memoryPressureLevel {
+           case 2: return .red
+           case 1: return .yellow
+           default: return .green
+           }
+       }
+       let value = cpuMonitor.currentValue
+       if value < 33 {
+           return .green
+       } else if value < 66 {
+           return .yellow
+       } else {
+           return .red
+       }
+   }
+   ```
+
+6. **No changes needed to bar color** — `barColor` (white) is for bar strokes in bars mode.
+   `cachedColor` is used in number mode text color and gradient mode fill. Bars mode uses
+   white — the graph shape conveys the percentage.
+
+### Verification
+
+7. Build in Xcode: `xcodebuild -scheme CPUMeter -configuration Debug build 2>&1 | grep -E "error:|BUILD"`
+8. Kill and relaunch: `pkill -x CPUMeter 2>/dev/null; sleep 0.3 && open /Users/mattwesdock/Library/Developer/Xcode/DerivedData/CPUMeter-gcddwpcetlooefbvbkovmvderiuo/Build/Products/Debug/CPUMeter.app`
+9. Toggle to Memory — percentage should show ~25-30% instead of ~83%
+10. Color should be green under normal use (no swap activity)
+11. Toggle to CPU — verify CPU coloring/values unchanged
+
+## Key context
+- `vm_statistics64` struct is defined at CPUMonitor.swift L23-59 with all needed fields
+- `swapouts` and `compressions` are cumulative UInt64 counters (not rates)
+- `internal_page_count` and `purgeable_count` are UInt32 page counts
+- `pageSize` is pre-cached as `UInt64(getpagesize())` at L124
+- The function runs on `timerQueue`, published vars are set on main queue in `updateCPU()`
+- After changes, bump version in Info.plist and RELEASE_NOTES.md if committing
+
+## Files to modify
+- CPUMeter/CPUMonitor.swift — formula, delta tracking, published pressure level
+- CPUMeter/CPUGraphView.swift — cachedColor split by metric

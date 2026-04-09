@@ -1,6 +1,6 @@
 # CPUMeter Release Notes
 
-## Version 1.1 - Release Build
+## Version 1.2 - Release Build
 **Build Date:** April 6, 2026
 **Status:** Ready for Distribution
 
