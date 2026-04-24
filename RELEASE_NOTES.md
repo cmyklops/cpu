@@ -1,5 +1,14 @@
 # CPUMeter Release Notes
 
+## Version 1.3
+**Build Date:** April 24, 2026
+
+### Changes
+- **Memory pressure now uses kernel dispatch source** (`DispatchSource.makeMemoryPressureSource`) instead of polling swap/compression deltas. The kernel pushes `.normal` / `.warning` / `.critical` events — the same signal Activity Monitor uses — so the metric is calm/near-0% when the system is healthy and rises only under real memory pressure. Works correctly regardless of RAM size or swap device speed.
+- Removed `vm_statistics64` struct, `hostStatistics64`, and delta-tracking vars (now unused).
+
+---
+
 ## Version 1.2 - Release Build
 **Build Date:** April 6, 2026
 **Status:** Ready for Distribution
