@@ -1,5 +1,13 @@
 # CPUMeter Release Notes
 
+## Version 1.4
+**Build Date:** April 24, 2026
+
+### Changes
+- Added app icon: dark navy macOS-style rounded rectangle with CPU chip, pins, and green-to-cyan activity bars.
+
+---
+
 ## Version 1.3
 **Build Date:** April 24, 2026
 
