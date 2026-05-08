@@ -5,170 +5,427 @@ struct SettingsView: View {
     @ObservedObject var cpuMonitor = CPUMonitor.shared
     @State private var sliderValue: Double = PreferencesManager.shared.updateFrequency
     @State private var showResetConfirm = false
-    
+
     private let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
-    
+    private let appBuild = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
+
     var body: some View {
-        VStack(alignment: .center, spacing: 6) {
-            // Data freshness indicator
-            if !cpuMonitor.isDataFresh {
-                HStack {
-                    Image(systemName: "exclamationmark.circle.fill")
-                        .foregroundColor(.orange)
-                    Text("Data not updating")
-                        .font(.caption2)
-                    Spacer()
+        ZStack(alignment: .top) {
+            LinearGradient(
+                colors: [
+                    Color(nsColor: .windowBackgroundColor).opacity(0.24),
+                    tintColor.opacity(0.10),
+                    Color.white.opacity(0.06)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .background(.ultraThinMaterial)
+            .ignoresSafeArea()
+
+            VStack(spacing: 9) {
+                headerView
+
+                if !cpuMonitor.isDataFresh {
+                    statusBanner
                 }
-                .padding(4)
-                .background(Color.orange.opacity(0.1))
-                .cornerRadius(4)
+
+                monitorPanel
+                refreshPanel
+                systemPanel
+                actionButtons
             }
-            
-            // Metric selection
-            Picker("", selection: Binding(
-                get: { preferences.metricType },
-                set: { preferences.setMetricType($0) }
-            )) {
-                Text("CPU").tag("CPU").help("Monitor processor usage")
-                Text("Memory").tag("Memory").help("Monitor memory pressure")
-            }
-            .pickerStyle(.segmented)
-            .accessibilityLabel("Metric Type")
-            .help("Choose what to monitor: CPU (processor) or Memory (pressure)")
-            
-            // Display mode selection
-            Picker("", selection: Binding(
-                get: { preferences.displayMode },
-                set: { preferences.setDisplayMode($0) }
-            )) {
-                Text("Bars").tag("bars").help("Show as horizontal bars")
-                Text("Number").tag("number").help("Show as percentage")
-                Text("Gradient").tag("gradient").help("Show as vertical fill")
-            }
-            .pickerStyle(.segmented)
-            .help("Choose display style for the menu bar indicator")
-            
-            Divider()
-                .padding(.vertical, 6)
-            
-            // Stats display
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 8) {
-                    Text("Current")
-                    Spacer()
-                    Text(String(format: "%.1f%%", cpuMonitor.currentValue))
-                        .monospacedDigit()
-                }
-                HStack(spacing: 8) {
-                    Text("Average")
-                    Spacer()
-                    Text(String(format: "%.1f%%", cpuMonitor.averageValue))
-                        .monospacedDigit()
-                }
-                HStack(spacing: 8) {
-                    Text("Peak")
-                    Spacer()
-                    Text(String(format: "%.1f%%", cpuMonitor.peakValue))
-                        .monospacedDigit()
-                }
-            }
-            .font(.caption)
-            .foregroundColor(.gray)
-            
-            Divider()
-                .padding(.vertical, 6)
-            
-            // Update frequency
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 8) {
-                    Text("Update frequency")
-                        .font(.caption)
-                    Spacer()
-                    Text(String(format: "%.1fs", sliderValue))
-                        .monospacedDigit()
-                        .foregroundColor(.gray)
-                        .font(.caption)
-                }
-                Slider(
-                    value: $sliderValue,
-                    in: 0.1...2.0,
-                    step: 0.1,
-                    onEditingChanged: { editing in
-                        if !editing {
-                            preferences.setUpdateFrequency(sliderValue)
-                        }
-                    }
-                )
-            }
-            .padding(.bottom, 4)
-            
-            // Launch at startup - centered
-            Toggle("Launch at startup", isOn: Binding(
-                get: { preferences.launchAtStartup },
-                set: { preferences.setLaunchAtStartup($0) }
-            ))
-            .font(.caption)
-            .help("Automatically start CPUMeter when you log in")
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 4)
-            
-            Divider()
-                .padding(.vertical, 6)
-            
-            // Version and Reset
-            VStack(spacing: 6) {
-                Button(action: { openActivityMonitor() }) {
-                    Text("Open Activity Monitor")
-                        .frame(maxWidth: .infinity)
-                        .font(.caption)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                
-                Button(action: { showResetConfirm = true }) {
-                    Text("Reset to Defaults")
-                        .frame(maxWidth: .infinity)
-                        .font(.caption)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .alert("Reset Settings?", isPresented: $showResetConfirm) {
-                    Button("Cancel", role: .cancel) { }
-                    Button("Reset", role: .destructive) {
-                        preferences.resetToDefaults()
-                        sliderValue = 1.0
-                    }
-                } message: {
-                    Text("This will restore all settings to factory defaults.")
-                }
-                
-                Button(action: { NSApplication.shared.terminate(nil) }) {
-                    Text("Quit CPUMeter")
-                        .frame(maxWidth: .infinity)
-                        .font(.caption)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                
-                Text("CPUMeter v\(appVersion)")
-                    .font(.caption2)
-                    .foregroundColor(.gray)
-            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
         }
-        .padding(12)
-        .frame(width: 240)
+        .frame(width: 300)
+        .frame(maxHeight: .infinity, alignment: .top)
         .onAppear {
             sliderValue = preferences.updateFrequency
+            preferences.refreshLaunchAtLoginStatus()
         }
     }
-    
+
+    private var headerView: some View {
+        HStack(spacing: 10) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(glassStroke, lineWidth: 1)
+                    )
+                Image(systemName: cpuMonitor.currentMetric == .cpu ? "cpu" : "memorychip")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(tintColor)
+            }
+            .frame(width: 38, height: 38)
+
+            Text("CPUMeter")
+                .font(.headline.weight(.semibold))
+
+            Spacer(minLength: 0)
+        }
+        .help("CPUMeter \(appVersion) (\(appBuild))")
+    }
+
+    private var monitorPanel: some View {
+        glassSection(spacing: 8) {
+            if !cpuMonitor.isDataFresh {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundColor(.orange)
+                    Text(cpuMonitor.sampleStatus.message)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundColor(.orange)
+                    Spacer(minLength: 0)
+                }
+            }
+
+            VStack(spacing: 6) {
+                HStack {
+                    Spacer(minLength: 0)
+                    Picker("", selection: Binding(
+                        get: { preferences.metricType },
+                        set: { preferences.setMetricType($0) }
+                    )) {
+                        ForEach(MetricType.allCases) { metric in
+                            Text(metric.rawValue).tag(metric)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 150)
+                    .accessibilityLabel("Metric Type")
+                    Spacer(minLength: 0)
+                }
+
+                HStack {
+                    Spacer(minLength: 0)
+                    Picker("", selection: Binding(
+                        get: { preferences.displayMode },
+                        set: { preferences.setDisplayMode($0) }
+                    )) {
+                        ForEach(DisplayMode.allCases) { mode in
+                            Text(mode.title).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 224)
+                    .accessibilityLabel("Display Mode")
+                    Spacer(minLength: 0)
+                }
+            }
+
+            HStack(spacing: 8) {
+                primaryStatTile
+
+                VStack(spacing: 8) {
+                    supportStat("Avg", value: cpuMonitor.averageValue, symbol: "chart.bar.fill")
+                    supportStat("Peak", value: cpuMonitor.peakValue, symbol: "flame.fill")
+                }
+                .frame(width: 104)
+            }
+        }
+    }
+
+    private var refreshPanel: some View {
+        glassSection(spacing: 8) {
+            HStack(alignment: .firstTextBaseline) {
+                sectionHeader("Refresh", systemImage: "slider.horizontal.3")
+                Spacer()
+                Text(String(format: "%.1fs", sliderValue))
+                    .font(.caption.weight(.semibold).monospacedDigit())
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(.thinMaterial, in: Capsule())
+            }
+
+            Slider(
+                value: $sliderValue,
+                in: 0.1...2.0,
+                step: 0.1,
+                onEditingChanged: { editing in
+                    if !editing {
+                        preferences.setUpdateFrequency(sliderValue)
+                    }
+                }
+            )
+            .tint(tintColor)
+        }
+    }
+
+    private var systemPanel: some View {
+        glassSection(spacing: 7) {
+            HStack(spacing: 10) {
+                Toggle("Launch at startup", isOn: Binding(
+                    get: { preferences.launchAtStartup },
+                    set: { preferences.setLaunchAtStartup($0) }
+                ))
+                .font(.caption.weight(.medium))
+                .help(preferences.launchAtLoginStatus.detail)
+
+                Spacer(minLength: 4)
+
+                launchStatusBadge
+            }
+
+            Text(preferences.launchAtLoginStatus.detail)
+                .font(.caption2.weight(.medium))
+                .foregroundColor(.secondary)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var statusBanner: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundColor(.orange)
+            Text(cpuMonitor.sampleStatus.message)
+                .font(.caption2.weight(.medium))
+            Spacer()
+        }
+        .padding(8)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(Color.orange.opacity(0.28), lineWidth: 1)
+        )
+    }
+
+    private func sectionHeader(_ title: String, systemImage: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: systemImage)
+                .font(.caption.weight(.semibold))
+                .frame(width: 16)
+                .foregroundColor(tintColor)
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundColor(.secondary)
+        }
+    }
+
+    private func glassSection<Content: View>(
+        spacing: CGFloat = 7,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: spacing) {
+            content()
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(glassStroke, lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.10), radius: 10, x: 0, y: 6)
+    }
+
+    private var primaryStatTile: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 5) {
+                Image(systemName: "bolt.fill")
+                    .font(.caption.weight(.semibold))
+                    .foregroundColor(tintColor)
+                Text("Now")
+                    .font(.caption.weight(.semibold))
+                    .foregroundColor(.secondary)
+            }
+
+            Text(String(format: "%.0f%%", cpuMonitor.currentValue))
+                .font(.system(size: 34, weight: .semibold, design: .rounded))
+                .monospacedDigit()
+                .foregroundColor(.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.74)
+
+            Text(cpuMonitor.currentMetric == .cpu ? "Processor load" : "Memory pressure")
+                .font(.caption2.weight(.medium))
+                .foregroundColor(.secondary)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, minHeight: 96, alignment: .leading)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(Color.white.opacity(0.18), lineWidth: 1)
+        )
+    }
+
+    private func supportStat(_ label: String, value: Double, symbol: String) -> some View {
+        HStack(spacing: 7) {
+            Image(systemName: symbol)
+                .font(.caption.weight(.semibold))
+                .foregroundColor(tintColor)
+                .frame(width: 14)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(label)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundColor(.secondary)
+                Text(String(format: "%.0f%%", value))
+                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundColor(.primary)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 8)
+        .frame(height: 44)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(Color.white.opacity(0.16), lineWidth: 1)
+        )
+    }
+
+    private var launchStatusBadge: some View {
+        HStack(spacing: 5) {
+            Image(systemName: launchStatusSymbol)
+                .font(.caption2.weight(.bold))
+            Text(preferences.launchAtLoginStatus.message)
+                .font(.caption2.weight(.semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .foregroundColor(launchStatusColor)
+        .padding(.horizontal, 7)
+        .padding(.vertical, 4)
+        .background(launchStatusColor.opacity(0.10), in: Capsule())
+        .overlay(
+            Capsule()
+                .stroke(launchStatusColor.opacity(0.18), lineWidth: 1)
+        )
+        .help(preferences.launchAtLoginStatus.detail)
+    }
+
+    private var actionButtons: some View {
+        HStack(spacing: 8) {
+            Button(action: { openActivityMonitor() }) {
+                Label("Monitor", systemImage: "speedometer")
+                    .labelStyle(.iconOnly)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(GlassIconButtonStyle(tintColor: tintColor))
+            .help("Open Activity Monitor")
+
+            Button(action: { showResetConfirm = true }) {
+                Label("Reset", systemImage: "arrow.counterclockwise")
+                    .labelStyle(.iconOnly)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(GlassIconButtonStyle(tintColor: .orange))
+            .help("Reset to Defaults")
+            .alert("Reset Settings?", isPresented: $showResetConfirm) {
+                Button("Cancel", role: .cancel) { }
+                Button("Reset", role: .destructive) {
+                    preferences.resetToDefaults()
+                    sliderValue = 1.0
+                }
+            } message: {
+                Text("This will restore all settings to factory defaults.")
+            }
+
+            Button(action: { NSApplication.shared.terminate(nil) }) {
+                Label("Quit", systemImage: "power")
+                    .labelStyle(.iconOnly)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(GlassIconButtonStyle(tintColor: .red))
+            .help("Quit CPUMeter")
+        }
+    }
+
+    private var tintColor: Color {
+        if cpuMonitor.currentMetric == .memory {
+            switch cpuMonitor.memoryPressureLevel {
+            case 2: return .red
+            case 1: return .yellow
+            default: return .mint
+            }
+        }
+
+        switch cpuMonitor.currentValue {
+        case ..<33: return .mint
+        case ..<66: return .yellow
+        default: return .red
+        }
+    }
+
+    private var glassStroke: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color.white.opacity(0.56),
+                tintColor.opacity(0.22),
+                Color.white.opacity(0.10)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    private var launchStatusSymbol: String {
+        switch preferences.launchAtLoginStatus {
+        case .enabled: return "checkmark.circle.fill"
+        case .disabled: return "circle"
+        case .requiresApproval: return "exclamationmark.circle.fill"
+        case .unavailable: return "arrow.down.app.fill"
+        case .failed: return "xmark.circle.fill"
+        }
+    }
+
+    private var launchStatusColor: Color {
+        switch preferences.launchAtLoginStatus {
+        case .enabled: return .green
+        case .disabled: return .secondary
+        case .requiresApproval: return .orange
+        case .unavailable: return .secondary
+        case .failed: return .red
+        }
+    }
+
     private func openActivityMonitor() {
         let activityMonitorURL = FileManager.default.urls(for: .applicationDirectory, in: .systemDomainMask).first?
             .appendingPathComponent("Utilities/Activity Monitor.app")
-        
+
         if let url = activityMonitorURL {
             NSWorkspace.shared.open(url)
         }
+    }
+}
+
+private struct GlassIconButtonStyle: ButtonStyle {
+    var tintColor: Color
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundColor(tintColor)
+            .padding(.vertical, 7)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(configuration.isPressed ? 0.34 : 0.54),
+                                tintColor.opacity(configuration.isPressed ? 0.28 : 0.16)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            )
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 

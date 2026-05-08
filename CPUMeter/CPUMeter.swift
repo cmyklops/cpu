@@ -1,14 +1,22 @@
+import OSLog
 import SwiftUI
+
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationWillTerminate(_ notification: Notification) {
+        SingleInstanceManager.cleanup()
+    }
+}
 
 @main
 struct CPUMeterApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
     init() {
-        // Check for single instance
         if !SingleInstanceManager.ensureSingleInstance() {
+            Logger.startup.info("Another CPUMeter instance is already running.")
             NSApplication.shared.terminate(nil)
         }
-        
-        // Initialize in background to avoid blocking UI
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             NSApp.setActivationPolicy(.accessory)
             _ = StatusBarController.shared
@@ -22,4 +30,3 @@ struct CPUMeterApp: App {
         }
     }
 }
-

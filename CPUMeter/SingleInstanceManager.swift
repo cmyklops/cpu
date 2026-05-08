@@ -1,43 +1,67 @@
+import Darwin
 import Foundation
+import OSLog
 
-class SingleInstanceManager {
-    static func ensureSingleInstance() -> Bool {
-        let lockFile = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".com.cpumeter.lock")
-        
-        // Try to create the lock file
-        let fileManager = FileManager.default
-        
-        // Remove stale lock file if process doesn't exist
-        if fileManager.fileExists(atPath: lockFile.path) {
-            do {
-                let data = try Data(contentsOf: lockFile)
-                if let pidString = String(data: data, encoding: .utf8), 
-                   let pid = Int32(pidString) {
-                    // Check if process is still running
-                    if kill(pid, 0) == -1 {
-                        // Process not running, remove stale lock
-                        try fileManager.removeItem(at: lockFile)
-                    } else {
-                        // Another instance is running
-                        return false
-                    }
-                }
-            } catch {
-                try? fileManager.removeItem(at: lockFile)
-            }
+final class SingleInstanceLock {
+    private let lockURL: URL
+    private var fileDescriptor: CInt = -1
+
+    init(lockURL: URL = FileManager.default.temporaryDirectory.appendingPathComponent("com.cpumeter.app.lock")) {
+        self.lockURL = lockURL
+    }
+
+    deinit {
+        release()
+    }
+
+    func acquire() -> Bool {
+        guard fileDescriptor == -1 else {
+            return true
         }
-        
-        // Write current process ID
-        let currentPID = "\(ProcessInfo.processInfo.processIdentifier)"
-        try? currentPID.write(to: lockFile, atomically: true, encoding: .utf8)
-        
+
+        let descriptor = open(lockURL.path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR)
+        guard descriptor >= 0 else {
+            Logger.startup.error("Unable to open single-instance lock: \(String(cString: strerror(errno)), privacy: .public)")
+            return true
+        }
+
+        guard flock(descriptor, LOCK_EX | LOCK_NB) == 0 else {
+            close(descriptor)
+            return false
+        }
+
+        fileDescriptor = descriptor
+        let pid = "\(ProcessInfo.processInfo.processIdentifier)\n"
+        _ = ftruncate(fileDescriptor, 0)
+        _ = pid.withCString { write(fileDescriptor, $0, strlen($0)) }
         return true
     }
-    
+
+    func release() {
+        guard fileDescriptor >= 0 else {
+            return
+        }
+
+        flock(fileDescriptor, LOCK_UN)
+        close(fileDescriptor)
+        fileDescriptor = -1
+    }
+}
+
+enum SingleInstanceManager {
+    private static var retainedLock: SingleInstanceLock?
+
+    static func ensureSingleInstance() -> Bool {
+        let lock = SingleInstanceLock()
+        guard lock.acquire() else {
+            return false
+        }
+        retainedLock = lock
+        return true
+    }
+
     static func cleanup() {
-        let lockFile = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".com.cpumeter.lock")
-        try? FileManager.default.removeItem(at: lockFile)
+        retainedLock?.release()
+        retainedLock = nil
     }
 }

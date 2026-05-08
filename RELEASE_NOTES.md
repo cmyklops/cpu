@@ -1,6 +1,16 @@
 # CPUMeter Release Notes
 
-## Version 1.4
+## Current ($(MARKETING_VERSION))
+**Build Date:** May 8, 2026
+
+### Changes
+- Added pro release foundation: explicit bundle/version build settings, hardened release configuration, DMG signing/notarization Makefile flow, retained file-lock single-instance enforcement, OSLog categories, typed metric/display models, launch-at-login service abstraction, and XCTest coverage.
+- Refactored monitoring into testable sampling/history/stat models, fixed duplicate immediate sampling, refreshed stats on metric switches, serialized sampling state, and cleaned up Mach host port handling.
+- Redesigned the menu bar indicator and settings popover with a cleaner macOS 26-inspired visual style, tighter spacing, centered selectors, friendlier launch-at-startup messaging, and less developer-facing diagnostic text.
+
+---
+
+## 1.4
 **Build Date:** April 24, 2026
 
 ### Changes
@@ -8,7 +18,7 @@
 
 ---
 
-## Version 1.3
+## 1.3
 **Build Date:** April 24, 2026
 
 ### Changes
@@ -17,7 +27,7 @@
 
 ---
 
-## Version 1.2 - Release Build
+## 1.2 - Release Build
 **Build Date:** April 6, 2026
 **Status:** Ready for Distribution
 
