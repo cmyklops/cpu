@@ -4,6 +4,8 @@ DMG_NAME    := CPUMeter-$(VERSION).dmg
 DMG_STAGING := /tmp/cpumeter-dmg-staging
 DERIVED_DATA := /private/tmp/CPUMeterDerivedData
 RELEASE_APP := $(DERIVED_DATA)/Build/Products/Release/CPUMeter.app
+INSTALL_APP := /Applications/CPUMeter.app
+LSREGISTER  := /System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister
 
 # Resolve build output directories dynamically — no hardcoded DerivedData paths.
 RELEASE_DIR := $(DERIVED_DATA)/Build/Products/Release
@@ -18,19 +20,23 @@ build:
 test:
 	xcodebuild test -scheme $(SCHEME) -derivedDataPath "$(DERIVED_DATA)"
 
-# Copy the Release app to /Applications and re-register it with Launch Services.
+# Replace the installed app with a fresh Release bundle and re-register it.
 install: build
-	cp -R "$(RELEASE_DIR)/CPUMeter.app" /Applications/CPUMeter.app
-	xattr -cr /Applications/CPUMeter.app
-	touch /Applications/CPUMeter.app
+	pkill -x CPUMeter 2>/dev/null || true
+	rm -rf "$(INSTALL_APP)"
+	ditto "$(RELEASE_APP)" "$(INSTALL_APP)"
+	xattr -cr "$(INSTALL_APP)"
+	touch "$(INSTALL_APP)"
+	"$(LSREGISTER)" -f -R -trusted "$(INSTALL_APP)"
 
 # DESTRUCTIVE: permanently deletes /Applications/CPUMeter.app.
 uninstall:
-	rm -rf /Applications/CPUMeter.app
+	pkill -x CPUMeter 2>/dev/null || true
+	rm -rf "$(INSTALL_APP)"
 
 # Install the Release build and open it.
 run: install
-	open /Applications/CPUMeter.app
+	open "$(INSTALL_APP)"
 
 # Remove Xcode build artifacts for this scheme.
 clean:

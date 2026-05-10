@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate CPUMeter macOS app icons at all required sizes."""
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 import os
 
 OUTPUT_DIR = os.path.join(
@@ -14,6 +14,22 @@ def clamp(v, lo, hi):
     return max(lo, min(hi, v))
 
 
+def rounded_gradient(size, radius, top, bottom):
+    """Create a clipped vertical gradient for a rounded app-icon layer."""
+    gradient = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    gd = ImageDraw.Draw(gradient)
+    for y in range(size):
+        t = y / max(1, size - 1)
+        color = tuple(int(top[i] * (1 - t) + bottom[i] * t) for i in range(4))
+        gd.line([(0, y), (size, y)], fill=color)
+
+    mask = Image.new("L", (size, size), 0)
+    md = ImageDraw.Draw(mask)
+    md.rounded_rectangle([0, 0, size - 1, size - 1], radius=radius, fill=255)
+    gradient.putalpha(mask)
+    return gradient
+
+
 def create_icon(size):
     """Create a CPUMeter icon at the given pixel size."""
     img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
@@ -23,22 +39,41 @@ def create_icon(size):
 
     # ── Background ────────────────────────────────────────────────────────────
     corner_r = int(s * 0.225)
-    draw.rounded_rectangle(
-        [0, 0, s - 1, s - 1],
-        radius=corner_r,
-        fill=(20, 24, 52, 255),
+    base = rounded_gradient(
+        s,
+        corner_r,
+        top=(248, 253, 255, 230),
+        bottom=(42, 72, 104, 245),
     )
+    img = Image.alpha_composite(img, base)
+    draw = ImageDraw.Draw(img)
 
-    # Subtle upper glow
+    # Ambient color and specular edge.
     if size >= 64:
         overlay = Image.new("RGBA", (s, s), (0, 0, 0, 0))
         od = ImageDraw.Draw(overlay)
-        gw = int(s * 0.70)
-        gx = (s - gw) // 2
-        gy = int(s * 0.02)
-        od.ellipse([gx, gy, gx + gw, gy + gw], fill=(60, 100, 180, 25))
+        od.ellipse(
+            [int(-s * 0.18), int(-s * 0.16), int(s * 0.82), int(s * 0.78)],
+            fill=(255, 255, 255, 86),
+        )
+        od.ellipse(
+            [int(s * 0.30), int(s * 0.30), int(s * 1.18), int(s * 1.12)],
+            fill=(0, 220, 190, 42),
+        )
+        od.ellipse(
+            [int(-s * 0.04), int(s * 0.48), int(s * 0.78), int(s * 1.20)],
+            fill=(96, 115, 255, 34),
+        )
+        overlay = overlay.filter(ImageFilter.GaussianBlur(max(1, int(s * 0.035))))
         img = Image.alpha_composite(img, overlay)
         draw = ImageDraw.Draw(img)
+
+    draw.rounded_rectangle(
+        [int(s * 0.035), int(s * 0.035), int(s * 0.965), int(s * 0.965)],
+        radius=int(corner_r * 0.88),
+        outline=(255, 255, 255, 112),
+        width=max(1, int(s * 0.012)),
+    )
 
     # ── CPU Chip body ─────────────────────────────────────────────────────────
     chip_pad = s * 0.18
@@ -49,26 +84,38 @@ def create_icon(size):
     chip_corner = max(2, int(s * 0.05))
     border_w = max(1, int(s * 0.025))
 
-    # Chip fill (slightly lighter than bg)
-    draw.rounded_rectangle(
-        [cx0, cy0, cx1, cy1],
+    chip_layer = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+    cd = ImageDraw.Draw(chip_layer)
+    cd.rounded_rectangle(
+        [int(cx0), int(cy0), int(cx1), int(cy1)],
         radius=chip_corner,
-        fill=(28, 34, 68, 255),
+        fill=(232, 250, 255, 84),
     )
-    # Chip border
-    draw.rounded_rectangle(
-        [cx0, cy0, cx1, cy1],
+    cd.rounded_rectangle(
+        [int(cx0), int(cy0), int(cx1), int(cy1)],
         radius=chip_corner,
-        outline=(70, 130, 230, 255),
+        outline=(255, 255, 255, 184),
         width=border_w,
     )
+    if size >= 128:
+        shadow = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+        sd = ImageDraw.Draw(shadow)
+        sd.rounded_rectangle(
+            [int(cx0), int(cy0 + s * 0.025), int(cx1), int(cy1 + s * 0.025)],
+            radius=chip_corner,
+            fill=(0, 18, 34, 62),
+        )
+        shadow = shadow.filter(ImageFilter.GaussianBlur(max(1, int(s * 0.025))))
+        img = Image.alpha_composite(img, shadow)
+    img = Image.alpha_composite(img, chip_layer)
+    draw = ImageDraw.Draw(img)
 
     # ── Pins ──────────────────────────────────────────────────────────────────
     if size >= 48:
         pin_n = 3
         pin_thick = max(1, int(s * 0.018))
         pin_len = max(2, int(s * 0.09))
-        pin_col = (70, 130, 230, 200)
+        pin_col = (218, 250, 255, 182)
 
         v_step = chip_h / (pin_n + 1)
         for i in range(pin_n):
@@ -106,14 +153,23 @@ def create_icon(size):
         bx = bax0 + i * bar_spacing + (bar_spacing - bar_width) / 2
         bh = bar_area_h * h
         by = bay1 - bh
-        r = 0
-        g = int(clamp(155 + h * 85, 0, 255))
-        b = int(clamp(80 + h * 170, 0, 255))
+        if h < 0.58:
+            r, g, b = (77, 240, 190)
+        elif h < 0.86:
+            r, g, b = (255, 210, 88)
+        else:
+            r, g, b = (255, 92, 102)
         draw.rounded_rectangle(
             [bx, by, bx + bar_width, bay1],
             radius=bar_corner,
-            fill=(r, g, b, 240),
+            fill=(r, g, b, 232),
         )
+        if size >= 96:
+            draw.line(
+                [(bx + bar_width * 0.28, by + bar_width * 0.22), (bx + bar_width * 0.28, bay1 - bar_width * 0.30)],
+                fill=(255, 255, 255, 90),
+                width=max(1, int(bar_width * 0.12)),
+            )
 
     # Bar glow for large sizes
     if size >= 128:
@@ -123,16 +179,32 @@ def create_icon(size):
             bx = bax0 + i * bar_spacing + (bar_spacing - bar_width) / 2
             bh = bar_area_h * h
             by = bay1 - bh
-            r = 0
-            g = int(clamp(155 + h * 85, 0, 255))
-            b = int(clamp(80 + h * 170, 0, 255))
+            if h < 0.58:
+                r, g, b = (77, 240, 190)
+            elif h < 0.86:
+                r, g, b = (255, 210, 88)
+            else:
+                r, g, b = (255, 92, 102)
             exp = int(s * 0.015)
             gd.rounded_rectangle(
                 [bx - exp, by - exp, bx + bar_width + exp, bay1],
                 radius=bar_corner + exp,
-                fill=(r, g, b, 38),
+                fill=(r, g, b, 46),
             )
+        glow = glow.filter(ImageFilter.GaussianBlur(max(1, int(s * 0.012))))
         img = Image.alpha_composite(img, glow)
+
+    if size >= 128:
+        shine = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+        sd = ImageDraw.Draw(shine)
+        sd.arc(
+            [int(s * 0.13), int(s * 0.08), int(s * 0.86), int(s * 0.54)],
+            start=196,
+            end=338,
+            fill=(255, 255, 255, 118),
+            width=max(1, int(s * 0.018)),
+        )
+        img = Image.alpha_composite(img, shine)
 
     return img
 

@@ -5,33 +5,39 @@ struct CPUGraphView: View {
     @ObservedObject var preferences = PreferencesManager.shared
     @Environment(\.colorScheme) var colorScheme
 
+    private let meterSize = CGSize(width: 35, height: 22)
+    private let meterCornerRadius: CGFloat = 5
+
     private var meterBackground: some View {
-        RoundedRectangle(cornerRadius: 7, style: .continuous)
-            .fill(.ultraThinMaterial)
+        Color.clear
+            .tahoeGlass(
+                tint: cachedColor.opacity(colorScheme == .dark ? 0.18 : 0.12),
+                in: RoundedRectangle(cornerRadius: meterCornerRadius, style: .continuous),
+                interactive: true
+            )
             .overlay(
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                RoundedRectangle(cornerRadius: meterCornerRadius, style: .continuous)
                     .stroke(
                         LinearGradient(
                             colors: [
                                 Color.white.opacity(colorScheme == .dark ? 0.34 : 0.62),
-                                cachedColor.opacity(0.24),
-                                Color.white.opacity(0.08)
+                                cachedColor.opacity(colorScheme == .dark ? 0.18 : 0.24),
+                                Color.primary.opacity(colorScheme == .dark ? 0.12 : 0.08)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         ),
-                        lineWidth: 0.8
+                        lineWidth: 0.7
                     )
             )
-            .shadow(color: cachedColor.opacity(0.12), radius: 4, x: 0, y: 1)
     }
 
     private var barColor: Color {
-        colorScheme == .dark ? .white.opacity(0.92) : .primary.opacity(0.82)
+        cachedColor
     }
 
     private var highlightColor: Color {
-        Color.white
+        colorScheme == .dark ? .white : .primary
     }
 
     private var cachedColor: Color {
@@ -63,7 +69,7 @@ struct CPUGraphView: View {
             }
         }
         .background(meterBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: meterCornerRadius, style: .continuous))
     }
     
     private var barsView: some View {
@@ -74,28 +80,33 @@ struct CPUGraphView: View {
             
             guard !history.isEmpty else { return }
             
-            let lineWidth = max(1.0, width / Double(history.count))
+            let spacing = 1.0
             let historyCount = history.count
+            let barWidth = max(1.0, floor((width - (spacing * Double(max(0, historyCount - 1)))) / Double(historyCount)))
+            let totalWidth = (barWidth * Double(historyCount)) + (spacing * Double(max(0, historyCount - 1)))
+            let leadingInset = max(0, (width - totalWidth) / 2)
             
             for (index, value) in history.enumerated() {
-                let xStart = Double(index) * lineWidth
-                let lineHeight = (value / 100.0) * height
+                let xStart = leadingInset + (Double(index) * (barWidth + spacing))
+                let normalizedValue = min(max(value / 100.0, 0), 1)
+                let lineHeight = max(2.0, normalizedValue * (height - 5))
+                let yStart = height - 2 - lineHeight
                 let barPositionFromRight = historyCount - 1 - index
                 let isHighlighted = cpuMonitor.highlightedBarPositions.contains(barPositionFromRight)
-                let barDrawColor: Color = isHighlighted ? highlightColor : barColor
-                
-                var path = Path()
-                path.move(to: CGPoint(x: xStart + lineWidth / 2, y: height))
-                path.addLine(to: CGPoint(x: xStart + lineWidth / 2, y: height - lineHeight))
-                
-                context.stroke(path, with: .color(barDrawColor), lineWidth: max(1.0, lineWidth - 1))
+                let opacity = isHighlighted ? 0.96 : 0.48 + (normalizedValue * 0.38)
+                let rect = CGRect(x: xStart, y: yStart, width: barWidth, height: lineHeight)
+                let path = Path(roundedRect: rect, cornerSize: CGSize(width: 1.5, height: 1.5))
+
+                context.fill(path, with: .color(barColor.opacity(opacity)))
 
                 if isHighlighted {
-                    context.stroke(path, with: .color(cachedColor.opacity(0.65)), lineWidth: max(2.0, lineWidth))
+                    context.stroke(path, with: .color(highlightColor.opacity(0.38)), lineWidth: 0.7)
                 }
             }
         }
-        .frame(width: 35, height: 22)
+        .padding(.horizontal, 3)
+        .padding(.vertical, 3)
+        .frame(width: meterSize.width, height: meterSize.height)
         .accessibilityLabel(cpuMonitor.currentMetric == .cpu ? "CPU graph" : "Memory graph")
         .accessibilityValue(String(format: "%.0f%%", cpuMonitor.currentValue))
     }
@@ -104,18 +115,11 @@ struct CPUGraphView: View {
         ZStack {
             Text(String(format: "%.0f", cpuMonitor.currentValue))
                 .font(.system(size: 16, weight: .black, design: .monospaced))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [Color.white, cachedColor.opacity(0.92)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .shadow(color: cachedColor.opacity(0.35), radius: 2, x: 0, y: 1)
+                .foregroundStyle(cachedColor)
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
         }
-        .frame(width: 35, height: 22)
+        .frame(width: meterSize.width, height: meterSize.height)
         .accessibilityLabel(cpuMonitor.currentMetric == .cpu ? "CPU usage" : "Memory usage")
         .accessibilityValue(String(format: "%.0f%%", cpuMonitor.currentValue))
     }
@@ -128,27 +132,17 @@ struct CPUGraphView: View {
             VStack(spacing: 0) {
                 Spacer()
                 Rectangle()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                cachedColor.opacity(0.95),
-                                cachedColor.opacity(0.35)
-                            ],
-                            startPoint: .bottom,
-                            endPoint: .top
-                        )
-                    )
+                    .fill(cachedColor.opacity(0.86))
                     .frame(height: 22.0 * fillPercentage)
             }
             
             let label = cpuMonitor.currentMetric == .cpu ? "C" : "M"
             Text(label)
                 .font(.system(size: 14, weight: .bold, design: .default))
-                .foregroundColor(.white.opacity(0.94))
-                .shadow(color: .black.opacity(0.35), radius: 1, x: 0, y: 1)
+                .foregroundColor(colorScheme == .dark ? .white.opacity(0.94) : .primary.opacity(0.78))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(width: 35, height: 22)
+        .frame(width: meterSize.width, height: meterSize.height)
         .clipped()
         .accessibilityLabel(cpuMonitor.currentMetric == .cpu ? "CPU meter" : "Memory pressure meter")
         .accessibilityValue(String(format: "%.0f%%", cpuMonitor.currentValue))
@@ -158,4 +152,19 @@ struct CPUGraphView: View {
 #Preview {
     let monitor = CPUMonitor()
     CPUGraphView(cpuMonitor: monitor)
+}
+
+extension View {
+    @ViewBuilder
+    func tahoeGlass<S: Shape>(
+        tint: Color? = nil,
+        in shape: S,
+        interactive: Bool = false
+    ) -> some View {
+        if #available(macOS 26.0, *) {
+            self.glassEffect(.regular.tint(tint).interactive(interactive), in: shape)
+        } else {
+            self.background(.ultraThinMaterial, in: shape)
+        }
+    }
 }

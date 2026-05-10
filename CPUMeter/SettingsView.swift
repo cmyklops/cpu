@@ -11,17 +11,7 @@ struct SettingsView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            LinearGradient(
-                colors: [
-                    Color(nsColor: .windowBackgroundColor).opacity(0.24),
-                    tintColor.opacity(0.10),
-                    Color.white.opacity(0.06)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .background(.ultraThinMaterial)
-            .ignoresSafeArea()
+            tahoeBackdrop
 
             VStack(spacing: 9) {
                 headerView
@@ -49,8 +39,12 @@ struct SettingsView: View {
     private var headerView: some View {
         HStack(spacing: 10) {
             ZStack {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(.ultraThinMaterial)
+                Color.clear
+                    .tahoeGlass(
+                        tint: tintColor.opacity(0.18),
+                        in: RoundedRectangle(cornerRadius: 8, style: .continuous),
+                        interactive: true
+                    )
                     .overlay(
                         RoundedRectangle(cornerRadius: 8, style: .continuous)
                             .stroke(glassStroke, lineWidth: 1)
@@ -63,6 +57,7 @@ struct SettingsView: View {
 
             Text("CPUMeter")
                 .font(.headline.weight(.semibold))
+                .foregroundStyle(.primary)
 
             Spacer(minLength: 0)
         }
@@ -96,6 +91,7 @@ struct SettingsView: View {
                     }
                     .pickerStyle(.segmented)
                     .frame(width: 150)
+                    .controlSize(.small)
                     .accessibilityLabel("Metric Type")
                     Spacer(minLength: 0)
                 }
@@ -112,6 +108,7 @@ struct SettingsView: View {
                     }
                     .pickerStyle(.segmented)
                     .frame(width: 224)
+                    .controlSize(.small)
                     .accessibilityLabel("Display Mode")
                     Spacer(minLength: 0)
                 }
@@ -153,6 +150,7 @@ struct SettingsView: View {
                 }
             )
             .tint(tintColor)
+            .controlSize(.small)
         }
     }
 
@@ -188,7 +186,12 @@ struct SettingsView: View {
             Spacer()
         }
         .padding(8)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .background(
+            Color.clear.tahoeGlass(
+                tint: Color.orange.opacity(0.14),
+                in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+            )
+        )
         .overlay(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .stroke(Color.orange.opacity(0.28), lineWidth: 1)
@@ -216,12 +219,17 @@ struct SettingsView: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .background(
+            Color.clear.tahoeGlass(
+                tint: tintColor.opacity(0.07),
+                in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+            )
+        )
         .overlay(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .stroke(glassStroke, lineWidth: 1)
         )
-        .shadow(color: Color.black.opacity(0.10), radius: 10, x: 0, y: 6)
+        .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 5)
     }
 
     private var primaryStatTile: some View {
@@ -250,10 +258,15 @@ struct SettingsView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity, minHeight: 96, alignment: .leading)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .background(
+            Color.clear.tahoeGlass(
+                tint: tintColor.opacity(0.10),
+                in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+            )
+        )
         .overlay(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                .stroke(glassStroke, lineWidth: 0.8)
         )
     }
 
@@ -279,10 +292,15 @@ struct SettingsView: View {
         .padding(.horizontal, 9)
         .padding(.vertical, 8)
         .frame(height: 44)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .background(
+            Color.clear.tahoeGlass(
+                tint: tintColor.opacity(0.08),
+                in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+            )
+        )
         .overlay(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(Color.white.opacity(0.16), lineWidth: 1)
+                .stroke(Color.white.opacity(0.16), lineWidth: 0.8)
         )
     }
 
@@ -298,7 +316,12 @@ struct SettingsView: View {
         .foregroundColor(launchStatusColor)
         .padding(.horizontal, 7)
         .padding(.vertical, 4)
-        .background(launchStatusColor.opacity(0.10), in: Capsule())
+        .background(
+            Color.clear.tahoeGlass(
+                tint: launchStatusColor.opacity(0.14),
+                in: Capsule()
+            )
+        )
         .overlay(
             Capsule()
                 .stroke(launchStatusColor.opacity(0.18), lineWidth: 1)
@@ -359,12 +382,29 @@ struct SettingsView: View {
         }
     }
 
+    private var tahoeBackdrop: some View {
+        ZStack {
+            Color(nsColor: .windowBackgroundColor)
+            LinearGradient(
+                colors: [
+                    tintColor.opacity(0.12),
+                    Color.primary.opacity(0.035),
+                    Color.clear
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
+        .background(.regularMaterial)
+        .ignoresSafeArea()
+    }
+
     private var glassStroke: LinearGradient {
         LinearGradient(
             colors: [
-                Color.white.opacity(0.56),
-                tintColor.opacity(0.22),
-                Color.white.opacity(0.10)
+                Color.white.opacity(0.52),
+                tintColor.opacity(0.20),
+                Color.primary.opacity(0.08)
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -409,14 +449,20 @@ private struct GlassIconButtonStyle: ButtonStyle {
             .font(.system(size: 13, weight: .semibold))
             .foregroundColor(tintColor)
             .padding(.vertical, 7)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .background(
+                Color.clear.tahoeGlass(
+                    tint: tintColor.opacity(configuration.isPressed ? 0.18 : 0.10),
+                    in: RoundedRectangle(cornerRadius: 8, style: .continuous),
+                    interactive: true
+                )
+            )
             .overlay(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .stroke(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(configuration.isPressed ? 0.34 : 0.54),
-                                tintColor.opacity(configuration.isPressed ? 0.28 : 0.16)
+                                Color.white.opacity(configuration.isPressed ? 0.32 : 0.48),
+                                tintColor.opacity(configuration.isPressed ? 0.30 : 0.17)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
