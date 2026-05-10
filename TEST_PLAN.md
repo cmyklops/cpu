@@ -5,7 +5,7 @@
 ### Bars Mode
 - [ ] White pixel lines visible in menu bar
 - [ ] Lines respond to CPU activity (increase on system load)
-- [ ] Six large rounded menu bar bars remain white/greyscale with transparent background
+- [ ] Six large square menu bar bars remain white/greyscale with transparent background
 - [ ] Bars render sharply without soft or fractional-position edges
 - [ ] Higher CPU activity increases greyscale intensity, not hue
 - [ ] Lines scroll left as new data arrives
@@ -45,7 +45,8 @@
 
 ### Footer Title
 - [ ] Footer icon is centered at the bottom of the popover
-- [ ] CPUMeter title and version sit immediately next to the centered footer icon
+- [ ] CPUMeter title, footer icon, and version number use equal-width columns
+- [ ] CPUMeter title, footer icon, and version number are centered within their columns
 
 ### Display Mode Selection
 - [ ] Bars/Number/Gradient segmented control appears above CPU/Memory

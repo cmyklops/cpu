@@ -26,7 +26,8 @@ struct SettingsView: View {
                 headerView
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 7)
+            .padding(.top, 10)
+            .padding(.bottom, 7)
         }
         .frame(width: 300)
         .frame(maxHeight: .infinity, alignment: .top)
@@ -43,7 +44,12 @@ struct SettingsView: View {
     }
 
     private var headerView: some View {
-        ZStack {
+        HStack(spacing: 0) {
+            Text("CPUMeter")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.primary)
+                .frame(maxWidth: .infinity, alignment: .center)
+
             ZStack {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .fill(tintColor.opacity(0.18))
@@ -56,17 +62,12 @@ struct SettingsView: View {
                     .foregroundStyle(tintColor)
             }
             .frame(width: 30, height: 30)
+            .frame(maxWidth: .infinity)
 
-            VStack(alignment: .leading, spacing: 0) {
-                Text("CPUMeter")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.primary)
-
-                Text("v\(appVersion)")
-                    .font(.caption2.weight(.semibold).monospacedDigit())
-                    .foregroundStyle(.secondary)
-            }
-            .offset(x: 62)
+            Text("v\(appVersion)")
+                .font(.caption.weight(.semibold).monospacedDigit())
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .center)
         }
         .frame(maxWidth: .infinity)
         .frame(height: 32)

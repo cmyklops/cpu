@@ -59,7 +59,7 @@ struct CPUGraphView: View {
                 let isHighlighted = cpuMonitor.highlightedBarPositions.contains(barPositionFromRight)
                 let opacity = isHighlighted ? 1.0 : 0.62 + (normalizedValue * 0.32)
                 let rect = CGRect(x: xStart, y: yStart, width: barWidth, height: lineHeight)
-                let path = Path(roundedRect: rect, cornerSize: CGSize(width: 2, height: 2))
+                let path = Path(rect)
 
                 context.fill(path, with: .color(menuBarInk.opacity(opacity)))
 
