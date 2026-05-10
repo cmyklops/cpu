@@ -5,60 +5,71 @@
 ### Bars Mode
 - [ ] White pixel lines visible in menu bar
 - [ ] Lines respond to CPU activity (increase on system load)
-- [ ] Green color when CPU < 33%
-- [ ] Yellow color when CPU 33-66%
-- [ ] Red color when CPU > 66%
+- [ ] Six large rounded menu bar bars remain white/greyscale with transparent background
+- [ ] Bars render sharply without soft or fractional-position edges
+- [ ] Higher CPU activity increases greyscale intensity, not hue
 - [ ] Lines scroll left as new data arrives
 - [ ] 35×22px frame fits menu bar cleanly
 
 ### Number Mode
 - [ ] Large bold monospaced number displays in menu bar (0-99)
 - [ ] Number updates in real-time
-- [ ] Color matches CPU utilization (green/yellow/red)
+- [ ] Number remains white/greyscale with transparent background
 - [ ] Font size readable at 35×22px
 
 ### Gradient Mode
 - [ ] Vertical fill bar visible from bottom
 - [ ] Fill height matches CPU percentage (0-100%)
 - [ ] "C" label visible in overlay
-- [ ] Color gradient green→yellow→red
+- [ ] Fill remains white/greyscale with transparent background
 
 ## 2. Display Modes - Memory Metric
 
 ### Bars Mode
 - [ ] Switch to Memory metric via settings
 - [ ] Bars now show memory utilization (not CPU)
-- [ ] Color coding still applies (green/yellow/red)
+- [ ] Greyscale-only menu bar styling still applies
 - [ ] Accurate memory percentage display
 
 ### Number Mode
 - [ ] Number shows memory percentage
 - [ ] Updates in real-time
-- [ ] Correct color coding
+- [ ] Greyscale-only menu bar styling still applies
 
 ### Gradient Mode
 - [ ] "M" label displays (not "C")
 - [ ] Fill height matches memory percentage
-- [ ] Color gradient applies to memory
+- [ ] Greyscale-only menu bar styling still applies
 
 ## 3. Settings Popover
 
+### Footer Title
+- [ ] Footer icon is centered at the bottom of the popover
+- [ ] CPUMeter title and version sit immediately next to the centered footer icon
+
+### Display Mode Selection
+- [ ] Bars/Number/Gradient segmented control appears above CPU/Memory
+- [ ] Bars/Number/Gradient segmented control stretches to the panel width
+- [ ] Bars/Number/Gradient buttons responsive
+- [ ] Switching modes updates graph immediately
+- [ ] All three modes work with both metrics
+
 ### Metric Selection
+- [ ] CPU/Memory segmented control stretches to the panel width
 - [ ] CPU button highlighted when CPU selected
 - [ ] Memory button highlighted when Memory selected
 - [ ] Switching metrics updates graph immediately
 - [ ] Current/Average/Peak stats update for new metric
-
-### Display Mode Selection
-- [ ] Bars/Number/Gradient buttons responsive
-- [ ] Switching modes updates graph immediately
-- [ ] All three modes work with both metrics
 
 ### Statistics Display
 - [ ] Current value shows real-time metric
 - [ ] Average value displays (rolling average)
 - [ ] Peak value displays (highest recorded)
 - [ ] All three stats visible and updating
+
+### Sharpness
+- [ ] Popover panels and buttons use crisp opaque fills instead of blurred material
+- [ ] Top monitor section uses compact control and tile spacing without clipping text
 
 ### Update Frequency Slider
 - [ ] Slider responds from 0.1 to 2.0 seconds
@@ -87,6 +98,8 @@
 - [ ] Clicking again closes popover
 - [ ] Clicking outside popover closes it
 - [ ] Popover appears above menu bar item
+- [ ] Popover backdrop is a flat dark macOS menu-extra surface without visible gradient
+- [ ] Popover edge stroke is visible against the backdrop
 
 ### Click Responsiveness
 - [ ] Button highlight fits 35×22px area (known: slight system padding)

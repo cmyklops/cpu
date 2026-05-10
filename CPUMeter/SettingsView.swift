@@ -8,14 +8,13 @@ struct SettingsView: View {
 
     private let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
     private let appBuild = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
+    private let panelControlWidth: CGFloat = 256
 
     var body: some View {
         ZStack(alignment: .top) {
             tahoeBackdrop
 
-            VStack(spacing: 9) {
-                headerView
-
+            VStack(spacing: 7) {
                 if !cpuMonitor.isDataFresh {
                     statusBanner
                 }
@@ -24,12 +23,19 @@ struct SettingsView: View {
                 refreshPanel
                 systemPanel
                 actionButtons
+                headerView
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.vertical, 7)
         }
         .frame(width: 300)
         .frame(maxHeight: .infinity, alignment: .top)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(popoverBorder, lineWidth: 1)
+        )
+        .preferredColorScheme(.dark)
         .onAppear {
             sliderValue = preferences.updateFrequency
             preferences.refreshLaunchAtLoginStatus()
@@ -37,35 +43,38 @@ struct SettingsView: View {
     }
 
     private var headerView: some View {
-        HStack(spacing: 10) {
+        ZStack {
             ZStack {
-                Color.clear
-                    .tahoeGlass(
-                        tint: tintColor.opacity(0.18),
-                        in: RoundedRectangle(cornerRadius: 8, style: .continuous),
-                        interactive: true
-                    )
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(tintColor.opacity(0.18))
                     .overlay(
                         RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .stroke(glassStroke, lineWidth: 1)
+                            .stroke(crispStroke, lineWidth: 1)
                     )
                 Image(systemName: cpuMonitor.currentMetric == .cpu ? "cpu" : "memorychip")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(tintColor)
             }
-            .frame(width: 38, height: 38)
+            .frame(width: 30, height: 30)
 
-            Text("CPUMeter")
-                .font(.headline.weight(.semibold))
-                .foregroundStyle(.primary)
+            VStack(alignment: .leading, spacing: 0) {
+                Text("CPUMeter")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.primary)
 
-            Spacer(minLength: 0)
+                Text("v\(appVersion)")
+                    .font(.caption2.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+            .offset(x: 62)
         }
+        .frame(maxWidth: .infinity)
+        .frame(height: 32)
         .help("CPUMeter \(appVersion) (\(appBuild))")
     }
 
     private var monitorPanel: some View {
-        glassSection(spacing: 8) {
+        glassSection(spacing: 7, padding: 8) {
             if !cpuMonitor.isDataFresh {
                 HStack(spacing: 6) {
                     Image(systemName: "exclamationmark.triangle.fill")
@@ -78,52 +87,89 @@ struct SettingsView: View {
                 }
             }
 
-            VStack(spacing: 6) {
-                HStack {
-                    Spacer(minLength: 0)
-                    Picker("", selection: Binding(
-                        get: { preferences.metricType },
-                        set: { preferences.setMetricType($0) }
-                    )) {
-                        ForEach(MetricType.allCases) { metric in
-                            Text(metric.rawValue).tag(metric)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .frame(width: 150)
-                    .controlSize(.small)
-                    .accessibilityLabel("Metric Type")
-                    Spacer(minLength: 0)
-                }
-
-                HStack {
-                    Spacer(minLength: 0)
-                    Picker("", selection: Binding(
-                        get: { preferences.displayMode },
-                        set: { preferences.setDisplayMode($0) }
-                    )) {
-                        ForEach(DisplayMode.allCases) { mode in
-                            Text(mode.title).tag(mode)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .frame(width: 224)
-                    .controlSize(.small)
-                    .accessibilityLabel("Display Mode")
-                    Spacer(minLength: 0)
-                }
+            VStack(spacing: 5) {
+                displayModeSelector
+                metricSelector
             }
+            .frame(maxWidth: .infinity)
 
-            HStack(spacing: 8) {
+            HStack(spacing: 7) {
                 primaryStatTile
 
-                VStack(spacing: 8) {
+                VStack(spacing: 7) {
                     supportStat("Avg", value: cpuMonitor.averageValue, symbol: "chart.bar.fill")
                     supportStat("Peak", value: cpuMonitor.peakValue, symbol: "flame.fill")
                 }
                 .frame(width: 104)
             }
         }
+    }
+
+    private var metricSelector: some View {
+        segmentedControl(accessibilityLabel: "Metric Type") {
+            ForEach(MetricType.allCases) { metric in
+                segmentedButton(
+                    title: metric.rawValue,
+                    isSelected: preferences.metricType == metric,
+                    action: { preferences.setMetricType(metric) }
+                )
+            }
+        }
+    }
+
+    private var displayModeSelector: some View {
+        segmentedControl(accessibilityLabel: "Display Mode") {
+            ForEach(DisplayMode.allCases) { mode in
+                segmentedButton(
+                    title: mode.title,
+                    isSelected: preferences.displayMode == mode,
+                    action: { preferences.setDisplayMode(mode) }
+                )
+            }
+        }
+    }
+
+    private func segmentedControl<Content: View>(
+        accessibilityLabel: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        HStack(spacing: 0) {
+            content()
+        }
+        .frame(width: panelControlWidth, height: 34)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(controlFill)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(crispStroke, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(accessibilityLabel)
+    }
+
+    private func segmentedButton(
+        title: String,
+        isSelected: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(isSelected ? .white : .primary.opacity(0.78))
+                .lineLimit(1)
+                .minimumScaleFactor(0.82)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .background(
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .fill(isSelected ? Color.accentColor : Color.clear)
+                .padding(2)
+        )
     }
 
     private var refreshPanel: some View {
@@ -136,7 +182,7 @@ struct SettingsView: View {
                     .foregroundColor(.secondary)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
-                    .background(.thinMaterial, in: Capsule())
+                    .background(Capsule().fill(Color.white.opacity(0.08)))
             }
 
             Slider(
@@ -187,10 +233,8 @@ struct SettingsView: View {
         }
         .padding(8)
         .background(
-            Color.clear.tahoeGlass(
-                tint: Color.orange.opacity(0.14),
-                in: RoundedRectangle(cornerRadius: 8, style: .continuous)
-            )
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color.orange.opacity(0.13))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -212,24 +256,22 @@ struct SettingsView: View {
 
     private func glassSection<Content: View>(
         spacing: CGFloat = 7,
+        padding: CGFloat = 9,
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: spacing) {
             content()
         }
-        .padding(10)
+        .padding(padding)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            Color.clear.tahoeGlass(
-                tint: tintColor.opacity(0.07),
-                in: RoundedRectangle(cornerRadius: 8, style: .continuous)
-            )
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(panelFill)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(glassStroke, lineWidth: 1)
+                .stroke(crispStroke, lineWidth: 1)
         )
-        .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 5)
     }
 
     private var primaryStatTile: some View {
@@ -255,18 +297,16 @@ struct SettingsView: View {
                 .foregroundColor(.secondary)
                 .lineLimit(1)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .frame(maxWidth: .infinity, minHeight: 96, alignment: .leading)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, minHeight: 88, alignment: .leading)
         .background(
-            Color.clear.tahoeGlass(
-                tint: tintColor.opacity(0.10),
-                in: RoundedRectangle(cornerRadius: 8, style: .continuous)
-            )
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(tileFill)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(glassStroke, lineWidth: 0.8)
+                .stroke(crispStroke, lineWidth: 1)
         )
     }
 
@@ -289,18 +329,16 @@ struct SettingsView: View {
 
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 9)
-        .padding(.vertical, 8)
-        .frame(height: 44)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 7)
+        .frame(height: 40)
         .background(
-            Color.clear.tahoeGlass(
-                tint: tintColor.opacity(0.08),
-                in: RoundedRectangle(cornerRadius: 8, style: .continuous)
-            )
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(tileFill)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(Color.white.opacity(0.16), lineWidth: 0.8)
+                .stroke(crispStroke, lineWidth: 1)
         )
     }
 
@@ -317,10 +355,8 @@ struct SettingsView: View {
         .padding(.horizontal, 7)
         .padding(.vertical, 4)
         .background(
-            Color.clear.tahoeGlass(
-                tint: launchStatusColor.opacity(0.14),
-                in: Capsule()
-            )
+            Capsule()
+                .fill(launchStatusColor.opacity(0.12))
         )
         .overlay(
             Capsule()
@@ -383,32 +419,28 @@ struct SettingsView: View {
     }
 
     private var tahoeBackdrop: some View {
-        ZStack {
-            Color(nsColor: .windowBackgroundColor)
-            LinearGradient(
-                colors: [
-                    tintColor.opacity(0.12),
-                    Color.primary.opacity(0.035),
-                    Color.clear
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        }
-        .background(.regularMaterial)
-        .ignoresSafeArea()
+        Color(nsColor: NSColor(calibratedWhite: 0.055, alpha: 1))
+            .ignoresSafeArea()
     }
 
-    private var glassStroke: LinearGradient {
-        LinearGradient(
-            colors: [
-                Color.white.opacity(0.52),
-                tintColor.opacity(0.20),
-                Color.primary.opacity(0.08)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
+    private var panelFill: Color {
+        Color(nsColor: NSColor(calibratedRed: 0.045, green: 0.135, blue: 0.120, alpha: 1))
+    }
+
+    private var tileFill: Color {
+        Color(nsColor: NSColor(calibratedRed: 0.030, green: 0.115, blue: 0.105, alpha: 1))
+    }
+
+    private var controlFill: Color {
+        Color(nsColor: NSColor(calibratedWhite: 0.145, alpha: 1))
+    }
+
+    private var crispStroke: Color {
+        Color.white.opacity(0.22)
+    }
+
+    private var popoverBorder: Color {
+        Color.white.opacity(0.28)
     }
 
     private var launchStatusSymbol: String {
@@ -450,25 +482,12 @@ private struct GlassIconButtonStyle: ButtonStyle {
             .foregroundColor(tintColor)
             .padding(.vertical, 7)
             .background(
-                Color.clear.tahoeGlass(
-                    tint: tintColor.opacity(configuration.isPressed ? 0.18 : 0.10),
-                    in: RoundedRectangle(cornerRadius: 8, style: .continuous),
-                    interactive: true
-                )
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(tintColor.opacity(configuration.isPressed ? 0.18 : 0.10))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .stroke(
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(configuration.isPressed ? 0.32 : 0.48),
-                                tintColor.opacity(configuration.isPressed ? 0.30 : 0.17)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1
-                    )
+                    .stroke(Color.white.opacity(configuration.isPressed ? 0.26 : 0.20), lineWidth: 1)
             )
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)

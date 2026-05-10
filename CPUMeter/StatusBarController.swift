@@ -31,6 +31,8 @@ class StatusBarController: NSObject {
         button.isBordered = false
         button.bezelStyle = .recessed
         button.controlSize = .mini
+        button.wantsLayer = true
+        button.layer?.backgroundColor = NSColor.clear.cgColor
         
         // Set explicit frame to prevent system from adding padding
         button.frame = NSRect(x: 0, y: 0, width: 35, height: 22)
@@ -44,6 +46,8 @@ class StatusBarController: NSObject {
         hostingView.frame = NSRect(x: 0, y: 0, width: 35, height: 22)
         hostingView.autoresizingMask = []
         hostingView.autoresizesSubviews = false
+        hostingView.wantsLayer = true
+        hostingView.layer?.backgroundColor = NSColor.clear.cgColor
         
         button.addSubview(hostingView)
         
@@ -65,7 +69,7 @@ class StatusBarController: NSObject {
         // Lazy initialize popover (create only once)
         if settingsPopover == nil {
             settingsPopover = NSPopover()
-            settingsPopover?.contentSize = NSSize(width: 300, height: 470)
+            settingsPopover?.contentSize = NSSize(width: 300, height: 430)
             settingsPopover?.behavior = .transient
             settingsPopover?.contentViewController = NSHostingController(rootView: SettingsView())
         }
@@ -74,6 +78,10 @@ class StatusBarController: NSObject {
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             // Make popover window key so it gets focus and click-outside closes it
             if let window = popover.contentViewController?.view.window {
+                window.appearance = NSAppearance(named: .darkAqua)
+                window.backgroundColor = .clear
+                window.isOpaque = false
+                window.hasShadow = true
                 window.makeKey()
             }
         }

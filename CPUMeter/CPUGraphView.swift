@@ -6,56 +6,18 @@ struct CPUGraphView: View {
     @Environment(\.colorScheme) var colorScheme
 
     private let meterSize = CGSize(width: 35, height: 22)
-    private let meterCornerRadius: CGFloat = 5
+    private let visibleBarCount = 6
 
-    private var meterBackground: some View {
-        Color.clear
-            .tahoeGlass(
-                tint: cachedColor.opacity(colorScheme == .dark ? 0.18 : 0.12),
-                in: RoundedRectangle(cornerRadius: meterCornerRadius, style: .continuous),
-                interactive: true
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: meterCornerRadius, style: .continuous)
-                    .stroke(
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(colorScheme == .dark ? 0.34 : 0.62),
-                                cachedColor.opacity(colorScheme == .dark ? 0.18 : 0.24),
-                                Color.primary.opacity(colorScheme == .dark ? 0.12 : 0.08)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 0.7
-                    )
-            )
-    }
-
-    private var barColor: Color {
-        cachedColor
-    }
-
-    private var highlightColor: Color {
+    private var menuBarInk: Color {
         colorScheme == .dark ? .white : .primary
     }
 
-    private var cachedColor: Color {
-        if cpuMonitor.currentMetric == .memory {
-            switch cpuMonitor.memoryPressureLevel {
-            case 2: return .red
-            case 1: return .yellow
-            default: return .mint
-            }
-        }
-        let value = cpuMonitor.currentValue
-        if value < 33 {
-            return .mint
-        } else if value < 66 {
-            return .yellow
-        } else {
-            return .red
-        }
+    private var highlightColor: Color {
+        menuBarInk.opacity(colorScheme == .dark ? 0.52 : 0.34)
+    }
+
+    private var valueIntensity: Double {
+        min(max(cpuMonitor.currentValue / 100.0, 0), 1)
     }
     
     var body: some View {
@@ -68,44 +30,46 @@ struct CPUGraphView: View {
                 gradientView
             }
         }
-        .background(meterBackground)
-        .clipShape(RoundedRectangle(cornerRadius: meterCornerRadius, style: .continuous))
+        .frame(width: meterSize.width, height: meterSize.height)
+        .background(Color.clear)
+        .contentShape(Rectangle())
     }
     
     private var barsView: some View {
         Canvas { context, size in
             let width = size.width
             let height = size.height
-            let history = cpuMonitor.currentMetric == .cpu ? cpuMonitor.cpuHistory : cpuMonitor.memoryHistory
+            let fullHistory = cpuMonitor.currentMetric == .cpu ? cpuMonitor.cpuHistory : cpuMonitor.memoryHistory
+            let history = Array(fullHistory.suffix(visibleBarCount))
             
             guard !history.isEmpty else { return }
             
             let spacing = 1.0
             let historyCount = history.count
-            let barWidth = max(1.0, floor((width - (spacing * Double(max(0, historyCount - 1)))) / Double(historyCount)))
+            let barWidth = max(4.0, floor((width - (spacing * Double(max(0, historyCount - 1)))) / Double(historyCount)))
             let totalWidth = (barWidth * Double(historyCount)) + (spacing * Double(max(0, historyCount - 1)))
-            let leadingInset = max(0, (width - totalWidth) / 2)
+            let leadingInset = floor(max(0, (width - totalWidth) / 2))
             
             for (index, value) in history.enumerated() {
                 let xStart = leadingInset + (Double(index) * (barWidth + spacing))
                 let normalizedValue = min(max(value / 100.0, 0), 1)
-                let lineHeight = max(2.0, normalizedValue * (height - 5))
-                let yStart = height - 2 - lineHeight
+                let lineHeight = floor(max(4.0, normalizedValue * (height - 3)))
+                let yStart = floor(height - 1 - lineHeight)
                 let barPositionFromRight = historyCount - 1 - index
                 let isHighlighted = cpuMonitor.highlightedBarPositions.contains(barPositionFromRight)
-                let opacity = isHighlighted ? 0.96 : 0.48 + (normalizedValue * 0.38)
+                let opacity = isHighlighted ? 1.0 : 0.62 + (normalizedValue * 0.32)
                 let rect = CGRect(x: xStart, y: yStart, width: barWidth, height: lineHeight)
-                let path = Path(roundedRect: rect, cornerSize: CGSize(width: 1.5, height: 1.5))
+                let path = Path(roundedRect: rect, cornerSize: CGSize(width: 2, height: 2))
 
-                context.fill(path, with: .color(barColor.opacity(opacity)))
+                context.fill(path, with: .color(menuBarInk.opacity(opacity)))
 
                 if isHighlighted {
-                    context.stroke(path, with: .color(highlightColor.opacity(0.38)), lineWidth: 0.7)
+                    context.stroke(path, with: .color(highlightColor), lineWidth: 1)
                 }
             }
         }
-        .padding(.horizontal, 3)
-        .padding(.vertical, 3)
+        .padding(.horizontal, 2)
+        .padding(.vertical, 2)
         .frame(width: meterSize.width, height: meterSize.height)
         .accessibilityLabel(cpuMonitor.currentMetric == .cpu ? "CPU graph" : "Memory graph")
         .accessibilityValue(String(format: "%.0f%%", cpuMonitor.currentValue))
@@ -115,7 +79,7 @@ struct CPUGraphView: View {
         ZStack {
             Text(String(format: "%.0f", cpuMonitor.currentValue))
                 .font(.system(size: 16, weight: .black, design: .monospaced))
-                .foregroundStyle(cachedColor)
+                .foregroundStyle(menuBarInk.opacity(0.78 + (valueIntensity * 0.2)))
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
         }
@@ -132,14 +96,14 @@ struct CPUGraphView: View {
             VStack(spacing: 0) {
                 Spacer()
                 Rectangle()
-                    .fill(cachedColor.opacity(0.86))
+                    .fill(menuBarInk.opacity(0.42 + (fillPercentage * 0.48)))
                     .frame(height: 22.0 * fillPercentage)
             }
             
             let label = cpuMonitor.currentMetric == .cpu ? "C" : "M"
             Text(label)
                 .font(.system(size: 14, weight: .bold, design: .default))
-                .foregroundColor(colorScheme == .dark ? .white.opacity(0.94) : .primary.opacity(0.78))
+                .foregroundColor(menuBarInk.opacity(0.9))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(width: meterSize.width, height: meterSize.height)
